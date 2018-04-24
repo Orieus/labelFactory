@@ -19,11 +19,9 @@ import os
 import shutil
 
 # Local imports
-from common.lib.ConfigCfg import ConfigCfg as Cfg
-from common.lib.Log import Log
-from common.lib.labeling.datamanager import DataManager
-
-import ipdb
+from labelfactory.ConfigCfg import ConfigCfg as Cfg
+from labelfactory.Log import Log
+from labelfactory.labeling.datamanager import DataManager
 
 CF_FNAME = "config.cf"
 CF_DEFAULT_PATH = "./config.cf.default"

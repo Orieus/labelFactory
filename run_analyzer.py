@@ -21,16 +21,24 @@ import matplotlib.pyplot as plt
 import ipdb
 
 # Local imports
-from common.lib.ConfigCfg import ConfigCfg as Cfg
-from common.lib.Log import Log
-from common.lib.labeling.datamanager import DataManager
-import common.lib.dataanalyzer.ROCanalyzer as ROCanalyzer
+from labelfactory.ConfigCfg import ConfigCfg as Cfg
+from labelfactory.Log import Log
+from labelfactory.labeling.datamanager import DataManager
+import labelfactory.dataanalyzer.ROCanalyzer as ROCanalyzer
 
 CF_FNAME = "config.cf"
 CF_DEFAULT_PATH = "./config.cf.default"
 
 
 def main():
+
+    # To complete the migration to python 3, I should replace all "raw_input"
+    # by "input". Transitorily, to preserve compatibility with python 2, I
+    # simply rename inut to raw_input
+    if sys.version_info.major == 3:
+        raw_input2 = input
+    else:
+        raw_input2 = raw_input
 
     #########################
     # Configurable parameters
@@ -45,8 +53,8 @@ def main():
     if len(sys.argv) > 1:
         project_path = sys.argv[1]
     else:
-        project_path = raw_input("Select the (absolute or relative) path to " +
-                                 "the labeling project folder: ")
+        project_path = raw_input2("Select the (absolute or relative) path " +
+                                  "to he labeling project folder: ")
     if not project_path.endswith('/'):
         project_path = project_path + '/'
 
@@ -106,7 +114,10 @@ def main():
                                               'labelhistory_fname'),
                  'labels_endname': cf.get('DataPaths', 'labels_endname'),
                  'preds_endname': cf.get('DataPaths', 'preds_endname'),
-                 'urls_fname': cf.get('DataPaths', 'urls_fname')}
+                 'urls_fname': cf.get('DataPaths', 'urls_fname'),
+                 'export_labels_fname': cf.get('DataPaths',
+                                               'export_labels_fname')
+                 }
 
     # Type of wid: if 'yes', the wid is computed as a transformed url.
     #              if 'no', the wid is taken equal to the url.
@@ -298,7 +309,7 @@ def main():
     propAll = {}
     propRS = {}
     propW = {}
-    ipdb.set_trace()
+
     for c in categories:
         y = df_labels['label'][c].values == yes_label
         sumAll[c] = np.sum(y)
@@ -307,7 +318,6 @@ def main():
         propAll[c] = float(sumAll[c]) / n_samples
         propRS[c] = float(sumRS[c]) / n_rs
         propW[c] = float(sumW[c]) / nW
-    ipdb.set_trace()
 
     main_cats = [c for c in categories if parentcat[c] is None]
     sub_cats = [c for c in categories if parentcat[c] is not None]

@@ -19,12 +19,12 @@ import shutil
 import argparse
 
 # Local imports
-from common.lib.labeling.LabelGUIController import LabelGUIController
-from common.lib.labeling.urlsampler import URLsampler
-from common.lib.ConfigCfg import ConfigCfg as Cfg
-from common.lib.Log import Log
-from common.lib.labeling.datamanager import DataManager
-from common.lib.labeling.labelprocessor import LabelProcessor
+from labelfactory.labeling.LabelGUIController import LabelGUIController
+from labelfactory.labeling.urlsampler import URLsampler
+from labelfactory.ConfigCfg import ConfigCfg as Cfg
+from labelfactory.Log import Log
+from labelfactory.labeling.datamanager import DataManager
+from labelfactory.labeling.labelprocessor import LabelProcessor
 
 if sys.version_info.major == 3:
     import tkinter as tk
