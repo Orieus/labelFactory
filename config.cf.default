@@ -1,0 +1,120 @@
+[DataPaths]
+
+# Data source (options: file, mongodb)
+source_type: file
+
+# Data destination (options: file, mongodb)
+# If mongodb, the data are stored both in file and mongodb
+dest_type: mongodb
+
+# Mongo DB settings
+db_name: 
+db_hostname: 
+db_user: 
+db_pwd: 
+db_label_coll_name: labelData
+db_history_coll_name: labelHistory
+db_port: 
+
+# DB writing mode: rewrite or update
+db_mode: update
+
+# Transfer mode to/from file or db: rewrite or update
+db_file2db_mode: rewrite
+db_db2file_mode: update
+
+# Labelling subfolders
+input_folder: input
+output_folder: output
+used_folder: used
+
+# Filenames (only names, not extensions)
+dataset_fname: dataset
+labelhistory_fname: labelhistory
+labels_endname: _labels
+preds_endname: _predict
+urls_fname: urls
+export_labels_fname: exported_labels
+
+[Labeler]
+# Type of wid: if 'yes', the wid is computed as a transformation of the url.
+#              if 'no', the wid is taken equal to the url.
+#              if 'www', the wid is the result of removing www. from the url
+compute_wid: no
+
+# List of categories. Every pair of categories A and B must satisfy 
+# A in B, B in A, or intersection(A, B) = emptyset
+categories: ['Business-', 'Shop Online', 'Real Estate', 'Hotel', 'Transport', 
+             'Newspapers',
+             'Community-', 'Personal', 'Church', 'Blog',
+             'Institution-', 'City',
+             'Passwd-',
+             'Adult-',
+             'Education-', 'SchoolUniv', 'Research',
+             'PPClick-',
+             'Holding-', 'Under Constr']
+
+# Dictionary of dependencies between categories
+# {A:B, C:D, E:D } means that A is a subclass of B and C and E are 
+# subclasses of D
+parentcat: {'Shop Online': 'Business-',
+            'Real Estate': 'Business-',
+            'Hotel': 'Business-',
+            'Transport': 'Business-',
+            'Newspapers': 'Business-',
+            'Personal': 'Community-',
+            'Church': 'Community-',
+            'Blog': 'Community-',
+            'City': 'Institution-',
+            'SchoolUniv': 'Education-',
+            'Research': 'Education-',
+            'Under Constr': 'Holding-'
+           }
+
+# If the categories are complete (i.e. they fill the observation space) then set
+# fill_with_Other to no. Otherwise, set fill_with_Other to yes, and a category
+# 'Other' will be added to the category set
+fill_with_Other: yes
+
+# List of labels
+yes_label: 1
+no_label: -1
+unknown_label = 0
+error_label = -99
+
+# Default value for predictions
+unknown_pred = 0
+
+# Set the following to True if a user identifier will be requested in order 
+# to track different labelers.
+track_user: yes
+
+[ActiveLearning]
+# In multiclass cases, the reference class is the class used by the active
+# learning algorithm to compute the sample scores.
+ref_class: Business-
+
+# Max. no. of urls to be labeled at each labeling step
+num_urls: 20
+
+# Type of active learning algorithms
+type_al: tourney
+
+# AL threshold. This is used by the AL algorithm to compute the score
+# of each  sample. A standard choice is to set it equal to the 
+# decision threshold of the classifier model, but there may be good
+# reasons for other choices. For instance, is classes are umbalanced, 
+# we can take self.alth = 1 so as to promote sampling from the 
+# positive class
+alth: -1
+
+# Probability of AL sampling. Samples are selected using AL with 
+# probability p,
+# and using random sampling otherwise.
+p_al: 0.0
+
+# Probability of selecting a sample already labelled
+p_relabel: 0.1
+
+# Size of each tourney (only for 'tourney' AL algorithm)
+tourneysize: 20
