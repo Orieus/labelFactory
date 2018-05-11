@@ -109,17 +109,19 @@ class LabelViewGeneric(tk.Frame):
 
             # Create the main label
             self.main_label = tk.Label(
-                self, text=" Etiquete la página según su tarea ")
+                self, text=" Select the correct labels ")
             self.main_label.grid(
                 row=0, column=0, columnspan=n_cols, sticky=tk.E+tk.W)
 
             # Create the url label but without the text yet.
-            self.url_label = tk.Label(self)
-            self.url_label.grid(
-                row=1, column=0, columnspan=n_cols, sticky=tk.E+tk.W)
+            r = 1
+            if self.cat_model == 'single':
+                self.url_label = tk.Label(self)
+                self.url_label.grid(
+                    row=r, column=0, columnspan=n_cols, sticky=tk.E+tk.W)
+                r += 1
 
             # Create the collection of buttons
-            r = 2
             c = 0
             self.mybuttons = {}
             for class_name in categories:
@@ -144,9 +146,15 @@ class LabelViewGeneric(tk.Frame):
                 # Add one more buttom to finish labeling
                 c = (c + 1) % 3
                 r = r + (c == 0)
-                self.mybuttons['end'] = tk.Button(self)
-                self.mybuttons['end']["text"] = "END"
-                self.mybuttons['end'].grid(row=r, column=c)
+                self.mybuttons['end'] = tk.Button(self, text="END")
+                self.mybuttons['end'].grid(row=r, column=c, sticky=tk.W)
+
+                # Create the main label
+                self.url_label = tk.Text(
+                    self, height=30, width=120, wrap=tk.WORD, relief=tk.SUNKEN,
+                    bg='white')
+                self.url_label.grid(
+                    row=r+1, column=0, rowspan=40, columnspan=120)
 
         else:
 
@@ -164,7 +172,7 @@ class LabelViewGeneric(tk.Frame):
 
             # Create the main label
             self.main_label = tk.Label(
-                self, text=" Etiquete la página según su tarea ")
+                self, text=" Select the correct labels ")
             self.main_label.grid(
                 row=0, column=0, columnspan=n_cols, sticky=tk.E+tk.W)
 
@@ -213,5 +221,4 @@ class LabelViewGeneric(tk.Frame):
                     bg='white')
                 self.url_label.grid(
                     row=r+1, column=0, rowspan=40, columnspan=120)
-                # , sticky=tk.W)
  
