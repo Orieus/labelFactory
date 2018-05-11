@@ -42,6 +42,13 @@ export_labels_fname: exported_labels
 #              if 'www', the wid is the result of removing www. from the url
 compute_wid: no
 
+# Type of data: if 'url': the data is a url shown in a browser
+#               if 'txt': the data is printed.
+datatype: url
+
+# Type of taxonomy: single (mutually exclusive classes), multi (multilabel)
+cat_model: single
+
 # List of categories. Every pair of categories A and B must satisfy 
 # A in B, B in A, or intersection(A, B) = emptyset
 categories: ['Business-', 'Shop Online', 'Real Estate', 'Hotel', 'Transport', 

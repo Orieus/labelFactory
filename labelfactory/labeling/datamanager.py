@@ -98,6 +98,7 @@ class DataManager(object):
             :alphabet: Possible labels for each category
             :compute_wid: Type of wid. If yes, the wid is a transformed url.
                           In no, the wid is equal to the url.
+            :unknown_pred: Default value for unknown predictions.
         """
 
         # Set variables about files and folders
@@ -545,7 +546,7 @@ class DataManager(object):
                 df_imported_preds.loc[wid_list_csv, cat_list])
             # for cat in cat_set:
             #     ipdb.set_trace()
-            #     df2_preds.loc[wid_list_csv, cat_list] = (
+            #     df2_preds.loc[wid_list_csv, cat_list] = (
             #         df_imported_preds.loc[wid_list_csv, cat])
             print('... done.')
             # for n, w in enumerate(wid_set):

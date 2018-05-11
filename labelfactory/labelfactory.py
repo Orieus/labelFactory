@@ -42,6 +42,27 @@ CF_DEFAULT_PATH = "./config.cf.default"
 
 
 def run_labeler(project_path, url, transfer_mode, user, export_labels):
+    """
+    Runs the labelling application for a given labelling project.
+
+    The application reads some input parameters from the config.cf file.
+
+    Args:
+
+        project_path: Path to the lebelling project
+        url:    Specific url to label. If None, a batch os labels is selected
+                from the available urls
+        transfer_mode: Mode to transfer the new data:
+                    - expand (default)
+                    - project
+                    - contract
+        user:   username of the human annotator
+        export_labels:
+                    - all (export all labels)
+                    - rs (export random sampling labels only)
+                    - al (export active learning labels only)
+
+    """
 
     # To complete the migration to python 3, I should replace all "raw_input"
     # by "input". Transitorily, to preserve compatibility with python 2, I
@@ -150,9 +171,19 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels):
     #              if 'no', the wid is taken equal to the url.
     compute_wid = cf.get('Labeler', 'compute_wid')
 
+    # Type of data: if 'url': the data is a url shown in a browser
+    #               if 'txt': the data is printed.
+    datatype = cf.get('Labeler', 'datatype')
+
+    # Taxonomy model: 'monolabel' or 'multilabel'
+    cat_model = cf.get('Labeler', 'cat_model')
+
     # List of categories to label.
     categories = ast.literal_eval(cf.get('Labeler', 'categories'))
+    # Note that for multilabel taxonomy models, the category tree information
+    # in the configuration file is ignored
     parentcat = ast.literal_eval(cf.get('Labeler', 'parentcat'))
+
     fill_with_Other = cf.get('Labeler', 'fill_with_Other')
 
     # Possible labels for each category
@@ -279,7 +310,7 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels):
                            compute_wid, unknown_pred)
 
     # Label processing object.
-    labelproc = LabelProcessor(categories, parentcat, log, alphabet)
+    labelproc = LabelProcessor(categories, parentcat, log, alphabet, cat_model)
 
     ###################
     # Read all datasets
@@ -353,16 +384,17 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels):
 
         # Start the controler.
         controller = LabelGUIController(newurls, newwids, newqueries, preds,
-                                        labels, urls, categories, alphabet)
+                                        labels, urls, categories, alphabet,
+                                        datatype, cat_model, parentcat)
 
         # Take the first url to work with and show it in a web browser
-        controller.takeandshow_url()
+        controller.takeandshow_sample()
 
         # Build  and launch GUI
         log.info("Starting GUI ....")
         log.info("Type of Active Learning algorithm: " + type_al)
         root = tk.Tk()
-        root.title('Web Labeling Tool')
+        root.title('The Label Factory')
         controller.init_view(root)
 
         # At this point the GUI is running.

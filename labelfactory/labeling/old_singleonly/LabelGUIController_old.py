@@ -8,12 +8,6 @@ from functools import partial
 # My own libraries
 from .LabelViewGeneric import LabelViewGeneric
 
-import sys
-if sys.version_info.major == 3:
-    import tkinter as tk
-else:
-    import Tkinter as tk
-
 import ipdb
 
 
@@ -28,8 +22,7 @@ class LabelGUIController(object):
     """
 
     def __init__(self, newurls, newwids, newqueries, preds, labels, urls,
-                 categories, alphabet, datatype='url', cat_model='single',
-                 parent_cat={}):
+                 categories, alphabet, datatype='url', cat_model='single'):
 
         """ This method initialize the sampler object. As part of this process
         it creates the AL objects required for the sample generation.
@@ -61,7 +54,6 @@ class LabelGUIController(object):
         # dictionary otherwise.
         self.urls = urls
         self.categories = categories
-        self.parent_cat = parent_cat
         self.alphabet = alphabet
         self.datatype = datatype
         self.cat_model = cat_model
@@ -175,32 +167,22 @@ class LabelGUIController(object):
 
         """ Shows updated labels
             NOTE: The original version of this method updated the label vector
-                  y. In the current version, the only goal is to remove the
-                  nonlabeled urls from self.newlabels and print some results.
+                  y, so the name. In the current version, the only goal of this
+                  method is to remove the nonlabeled urls from self.newlabels
+                  and print some results.
         """
 
         if self.newlabels:
 
             # Remove elements without labels
-            # WARNING!!: DO NOT REMOVE .keys() BECAUSE self.newlabels IS
-            #            MODIFIED IN THE LOOP!
-            wid_list = list(self.newlabels.keys())
-            for wid in wid_list:
+            # NOTE: Do not remove .keys() because self.newlabels is modified
+            # in the loop.
+            for wid in self.newlabels.keys():
                 if 'label' not in self.newlabels[wid]:
                     del self.newlabels[wid]
-                elif self.newlabels[wid]['label'] == []:
-                    # No category has been assigned. The url is ignored
-                    del self.newlabels[wid]
-
-            # This is just to abbreviate the code below
-            yes = self.alphabet['yes']
-            no = self.alphabet['no']
 
             for wid in self.newlabels:
 
-                # Note that self.urls is a dictionary of urls indexed by wids.
-                # wid in self.urls checks if the wid is in the wids of the
-                # dictionary
                 if wid in self.urls:
 
                     # Identify categories with previous label
@@ -209,40 +191,20 @@ class LabelGUIController(object):
                         islabel[c] = wid in self.labels[c]
 
                     if any(islabel.values()):
-
-                        if self.cat_model == 'single':
-                            # Warn if the new label is in conflict with the old
-                            # ones. If so, print the conflicting labels
-                            newlabel = self.newlabels[wid]['label']
-                            print("New label in {0}: {1}".format(wid,
-                                  newlabel))
-                            if newlabel != 'error' and islabel[newlabel]:
-                                if self.labels[newlabel][wid] == no:
-                                    print("--> In conflict with the old " +
-                                          "labels: ", end="")
-                                    for c in self.categories:
-                                        if self.labels[c][wid] == yes:
-                                            print("{0}, ".format(c), end="")
-                                    print(" ")
-                        elif self.cat_model == 'multi':
-                            # Warn if the new label is in conflict with the old
-                            # ones. If so, print the conflicting labels
-                            print("New label in {0}: {1}".format(wid,
-                                  self.newlabels[wid]['label']))
-                            for newlabel in self.newlabels[wid]['label']:
-                                if (newlabel in self.categories and
-                                        islabel[newlabel]):
-                                    if self.labels[newlabel][wid] == no:
-                                        print("--> In conflict with the old " +
-                                              "labels: ", end="")
-                                        for c in self.categories:
-                                            if self.labels[c][wid] == yes:
-                                                print("{0}, ".format(c),
-                                                      end="")
-                                        print(" ")
-                        else:
-                            exit("---- Unknown category model {}".format(
-                                 self.cat_model))
+                        # Warn if the new label is in conflict with the old
+                        # ones. If so, print the conflicting labels
+                        newlabel = self.newlabels[wid]['label']
+                        print("New label in {0}: {1}".format(wid, newlabel))
+                        if newlabel != 'error' and islabel[newlabel]:
+                            if self.labels[newlabel][wid] == self.alphabet[
+                                    'no']:
+                                print("--> In conflict with the old labels: ",
+                                      end="")
+                                for c in self.categories:
+                                    if self.labels[c][wid] == self.alphabet[
+                                            'yes']:
+                                        print("{0}, ".format(c), end="")
+                                print(" ")
 
                         # Also, print the current (not None) predictions
                         flag = 0
@@ -255,6 +217,8 @@ class LabelGUIController(object):
                                     if self.preds[c][wid] != 0:
                                         print("    {0}: {1}".format(
                                             c, self.preds[c][wid]))
+                        # if flag == 1:
+                        #     print " "
 
                     # The new label replaces the old one in any case.
                     # print "Saving of labels in vector y omitted"
@@ -282,8 +246,7 @@ class LabelGUIController(object):
         """
 
         self.view = LabelViewGeneric(self.categories, master=root,
-                                     cat_model=self.cat_model,
-                                     parent_cat=self.parent_cat)
+                                     cat_model=self.cat_model)
 
         # Set the action for all categories in list 'categories'
         for class_name in self.categories:
@@ -294,101 +257,21 @@ class LabelGUIController(object):
         self.view.mybuttons['error']["command"] = partial(
             self.labeling_event, 'error')
 
-        # Set the action for the special button 'end'
-        if self.cat_model == 'multi':
-            self.view.mybuttons['end']["command"] = partial(
-                self.labeling_event, 'end')
-
         # Start the gui is anything to label if (url is None) does not start it
         self.view.start_gui(self.url)
 
     def labeling_event(self, class_name):
 
-        """
-        Defines the commands to execut after each button is pressed or
-        unpressed.
-        """
+        # Save label
+        self.newlabels[self.wid]['label'] = class_name
+        self.newlabels[self.wid]['date'] = datetime.now()
 
-        if self.cat_model == 'single':
+        self.takeandshow_sample()
 
-            # Save label
-            self.newlabels[self.wid]['label'] = class_name
-            self.newlabels[self.wid]['date'] = datetime.now()
-
-            self.takeandshow_sample()
-
-            # # Change GUI label
-            if self.url:
-                self.view.update_guilabel(self.url)
-            # The following is no longer required, because if self.url is None,
-            # then takeandshow_sample() destroys the GUI.
-            # else:
-            #     self.view.master.destroy()
-
-        elif self.cat_model == 'multi':
-
-            # If this is the first pushed button, initialize the label list
-            if 'label' not in self.newlabels[self.wid]:
-                self.newlabels[self.wid]['label'] = []
-
-            relief = self.view.mybuttons[class_name]['relief']
-
-            if class_name in self.categories:
-                if relief == 'flat':
-
-                    # If error button is pressed, unpress.
-                    if self.view.mybuttons['error']['relief'] == 'sunken':
-                        self.view.mybuttons['error'].config(
-                            relief=tk.FLAT, text='error')
-
-                    # Add label to the list of labeled categories
-                    self.newlabels[self.wid]['label'].append(class_name)
-                    self.view.mybuttons[class_name].config(
-                        relief=tk.SUNKEN, text='['+class_name+']')
-                elif relief == 'sunken':
-                    # Unpress button and remove category from the list
-                    self.newlabels[self.wid]['label'].remove(class_name)
-                    self.view.mybuttons[class_name].config(
-                        relief=tk.FLAT, text=class_name)
-                else:
-                    exit('---- OOPS: Unexpected relief value in button')
-
-            elif class_name == 'error':
-
-                if relief == 'flat':
-                    # Unpress all buttons
-                    for c in self.categories:
-                        self.view.mybuttons[c].config(relief=tk.FLAT, text=c)
-
-                    # Remove labels and mark as error
-                    self.newlabels[self.wid]['label'] = ['error']
-                    self.view.mybuttons[class_name].config(
-                        relief=tk.SUNKEN, text='['+class_name+']')
-
-                elif relief == 'sunken':
-                    # Unpress button and remove category from the list
-                    self.newlabels[self.wid]['label'].remove(class_name)
-                    self.view.mybuttons[class_name].config(
-                        relief=tk.FLAT, text=class_name)
-                else:
-                    exit('---- OOPS: Unexpected relief value in button')
-
-            elif class_name == 'end':
-
-                for c in self.categories:
-                    self.view.mybuttons[c].config(relief=tk.FLAT, text=c)
-                # Annotate the date.
-                self.newlabels[self.wid]['date'] = datetime.now()
-                # Go to the next sample to label.
-                self.takeandshow_sample()
-
-                # # Change GUI label
-                if self.url:
-                    self.view.update_guilabel(self.url)
-
-            else:
-                exit('---- Unknown button name')
-
-        else:
-
-            exit("---- ERROR: Unknown category model")
+        # # Change GUI label
+        if self.url:
+            self.view.update_guilabel(self.url)
+        # The following is no longer required, because if self.url is None,
+        # then takeandshow_sample() destroys the GUI.
+        # else:
+        #     self.view.master.destroy()

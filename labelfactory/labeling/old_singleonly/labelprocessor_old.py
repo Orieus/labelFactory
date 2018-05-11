@@ -37,7 +37,7 @@ class LabelProcessor(object):
             :parentcat:  Dictionary defining the tree category structure
             :log:        Logger
             :alphabet:   Possible labels for each category
-            :cat_model:  Category model (single or multi -label)
+            :cat_model:  Category model (monolabel or multilabel)
         """
 
         self.categories = categories
@@ -391,13 +391,8 @@ class LabelProcessor(object):
 
         for wid in newlabels:
 
-            # New category or categories
-            if self.cat_model == 'single':
-                cats = [newlabels[wid]['label']]
-            elif self.cat_model == 'multi':
-                cats = newlabels[wid]['label']
-            else:
-                exit("---- ERROR: Unknown category model")
+            # New category
+            cat = newlabels[wid]['label']
 
             # Only labels in the category set are transferred to the data
             # structure. This means that label "error" is ignored.
@@ -406,7 +401,7 @@ class LabelProcessor(object):
             # not modified.
             # [Despite of this, error events will be recorded in history files
             # (see transferLabelRecords())]
-            if all(c in self.categories for c in cats):
+            if cat in self.categories:
 
                 if wid not in df_labels:
                     if ('info', 'url') in df_labels.columns:
@@ -415,8 +410,7 @@ class LabelProcessor(object):
 
                 # Insert the category in a label vector
                 label_dict = dict.fromkeys(self.categories, self._unknown)
-                for c in cats:
-                    label_dict[c] = self._yes
+                label_dict[cat] = self._yes
 
                 # Propagate the positive label to all ancestors. Also, a
                 # negative label to the other non-descendant categories
@@ -436,6 +430,10 @@ class LabelProcessor(object):
                 for c in self.categories:
                     df_labels.loc[wid, ('label', c)] = label_dict[c]
 
+                # Old "soft labeling". Insert new label in the data structure.
+                # data[wid]['label'] = self.updateLabels(label_dict,
+                #                                        label_orig)
+
                 # Store the marker and relabel
                 df_labels.loc[wid, ('info', 'marker')] = newlabels[wid][
                     'marker']
@@ -452,8 +450,8 @@ class LabelProcessor(object):
 
             It assumes precise labeling: the category assigned to a wid is the
             finest subcategory containing the wid. Thus, the new category and
-            all its ancestors are marked with the positive label.
-            Also, any other category is marked with the negative label
+            all its ancestors are marked with the positive label, and any other
+            category is marked with the negative label
 
             :Args:
                 :newlabels: Dictionary of pairs wid: cat, where cat is the
@@ -467,13 +465,8 @@ class LabelProcessor(object):
 
         for wid in newlabels:
 
-            # New category or categories
-            if self.cat_model == 'single':
-                cats = [newlabels[wid]['label']]
-            elif self.cat_model == 'multi':
-                cats = newlabels[wid]['label']
-            else:
-                exit("---- ERROR: Unknown category model")
+            # New category
+            cat = newlabels[wid]['label']
 
             # Only labels in the category set are transferred to the data
             # structure. This means that label "error" is ignored.
@@ -482,7 +475,7 @@ class LabelProcessor(object):
             # not modified.
             # [Despite of this, error events will be recorded in history files
             # (see transferLabelRecords())]
-            if all(c in self.categories for c in cats):
+            if cat in self.categories:
 
                 if wid not in data:
                     data[wid] = {}
@@ -490,8 +483,7 @@ class LabelProcessor(object):
 
                 # Insert the category in a label vector
                 label_dict = dict.fromkeys(self.categories, self._unknown)
-                for c in cats:
-                    label_dict[c] = self._yes
+                label_dict[cat] = self._yes
 
                 # Propagate the positive label to all ancestors. Also, a
                 # negative label to the other non-descendant categories
@@ -668,9 +660,8 @@ class LabelProcessor(object):
                 new_label[pcat] = self._yes
                 new_label, isOK = self.upwards(new_label, pcat)
 
-        if isOK and self.cat_model == 'single':
+        if isOK:
             # Propagate a "NO" through the sibling categories
-            # This is done for the single-label model only.
             for c in self.findSiblings(new_label, cat):
                 if new_label[c] == self._yes:
                     # Labeling is inconsistent, because we are assuming
