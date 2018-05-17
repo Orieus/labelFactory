@@ -26,7 +26,7 @@ def main():
     # Start
     #######
 
-    # settings
+    # Set of available options from the command line
     parser = argparse.ArgumentParser()
     parser.add_argument('--project_path', type=str, default=None,
                         help='Path to the labelling project')
@@ -40,16 +40,44 @@ def main():
     parser.add_argument('--export_labels', type=str, default=None,
                         help='Export labels. Options: all|rs|al (all labels ' +
                         ' | only random sampling | only active learning')
+
+    parser.add_argument('--num_urls', type=int, default=10,
+                        help='Number of examples to be labeled during a ' +
+                        'single labelling session (default 10)')
+    parser.add_argument('--type_al', type=str, default='random',
+                        help='Type of active learning algorithm. Options: ' +
+                        'tourney | random (default)')
+
+    parser.add_argument('--ref_class', type=str, default=None,
+                        help='Name of the category used by the active ' +
+                        'learning algorithm to compute the sample scores')
+    parser.add_argument('--alth', type=float, default=0.0,
+                        help='Active learning theshold [0]')
+    parser.add_argument('--p_al', type=float, default=0.0,
+                        help='Active learning probability [0]')
+    parser.add_argument('--p_relabel', type=float, default=0.0,
+                        help='Probability of resampling an already labeled ' +
+                        'sample [0]')
+    parser.add_argument('--tourneysize', type=int, default=40,
+                        help='Size of each active learning tournament [40]')
+
+    # Read variables from the commmand line.
     args = parser.parse_args()
 
-    project_path = args.project_path
-    url = args.url
-    tm = args.tm
-    user = args.user
-    export_labels = args.export_labels
-
     # Launch labelling application
-    labelfactory.run_labeler(project_path, url, tm, user, export_labels)
+    labelfactory.run_labeler(
+        args.project_path,
+        args.url,
+        args.tm,
+        args.user,
+        args.export_labels,
+        args.num_urls,
+        args.type_al,
+        args.ref_class,
+        args.alth,
+        args.p_al,
+        args.p_relabel,
+        args.tourneysize)
 
 
 if __name__ == "__main__":

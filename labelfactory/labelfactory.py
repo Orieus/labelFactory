@@ -41,7 +41,9 @@ CF_FNAME = "config.cf"
 CF_DEFAULT_PATH = "./config.cf.default"
 
 
-def run_labeler(project_path, url, transfer_mode, user, export_labels):
+def run_labeler(project_path, url, transfer_mode, user, export_labels,
+                num_urls, type_al, ref_class, alth, p_al, p_relabel,
+                tourneysize):
     """
     Runs the labelling application for a given labelling project.
 
@@ -203,31 +205,35 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels):
     # Check if a user identifier must be requested
     track_user = cf.get('Labeler', 'track_user')
 
-    # In multiclass cases, the reference class is the class used by the active
-    # learning algorithm to compute the sample scores.
-    ref_class = cf.get('ActiveLearning', 'ref_class')
+    # WARNING: THE FOLLOWING PARAMETERS HAVE BEEN REMOVED FROM THE CONFIG FILE
+    #          BECAUSE THEY ARE NOT SPECIFIC OF A LABELING PROJECT, BUT OF A
+    #          LABELING SESSION.
 
-    # Max. no. of urls to be labeled at each labeling step
-    num_urls = int(cf.get('ActiveLearning', 'num_urls'))
+    # # Max. no. of urls to be labeled at each labeling step
+    # num_urls = int(cf.get('ActiveLearning', 'num_urls'))
 
-    # Type of active learning algorithms
-    type_al = cf.get('ActiveLearning', 'type_al')
+    # # Type of active learning algorithms
+    # type_al = cf.get('ActiveLearning', 'type_al')
 
-    # Parameters of the active learning algorithm
-    # WARNING: an error may arise if any of these values is not in the config
-    # file.
-    # AL threshold.
-    alth = float(cf.get('ActiveLearning', 'alth'))
+    # # In multiclass cases, the reference class is the class used by the
+    # # active learning algorithm to compute the sample scores.
+    # ref_class = cf.get('ActiveLearning', 'ref_class')
 
-    # Probability of AL sampling. Samples are selected using AL with
-    # probability p, and using random sampling otherwise.
-    p_al = float(cf.get('ActiveLearning', 'p_al'))
+    # # Parameters of the active learning algorithm
+    # # WARNING: an error may arise if any of these values is not in the config
+    # # file.
+    # # AL threshold.
+    # alth = float(cf.get('ActiveLearning', 'alth'))
 
-    # Probability of selecting a sample already labelled
-    p_relabel = float(cf.get('ActiveLearning', 'p_relabel'))
+    # # Probability of AL sampling. Samples are selected using AL with
+    # # probability p, and using random sampling otherwise.
+    # p_al = float(cf.get('ActiveLearning', 'p_al'))
 
-    # Size of each tourney (only for 'tourney' AL algorithm)
-    tourneysize = int(cf.get('ActiveLearning', 'tourneysize'))
+    # # Probability of selecting a sample already labelled
+    # p_relabel = float(cf.get('ActiveLearning', 'p_relabel'))
+
+    # # Size of each tourney (only for 'tourney' AL algorithm)
+    # tourneysize = int(cf.get('ActiveLearning', 'tourneysize'))
 
     ##########
     # Log file
@@ -283,9 +289,14 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels):
             sys.exit()
 
     # Verify that ref_class is one of the given categories
-    if ref_class not in categories:
+    if ref_class is None and type_al == 'random':
+        # This is an arbitrary choice, just to avoid an execution error, but
+        # random sampling does not actually require any reference class.
+        # Maybe the code should be modified to avoid this artificial assignment
+        ref_class = categories[0]
+    elif type_al == 'tourney' and ref_class not in categories:
         log.error("The reference class is not in the set of categories. " +
-                  "Revise the assignment to ref_class in the config.cf file")
+                  "Active learning algorithms require a reference class")
         sys.exit()
 
     # Include the negative class in the category tree.
