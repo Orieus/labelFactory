@@ -23,7 +23,17 @@ import ipdb
 # sys.path.append(os.getcwd())
 
 
-class DataManager(object):
+def addSlash(p):
+    """
+    If string p does not end with character '/', it is added.
+    """
+    if p.endswith('/'):
+        return p
+    else:
+        return p + '/'
+
+
+class BaseDM(object):
 
     """
     DataManager is the class providing read and write facilities to access and
@@ -83,7 +93,8 @@ class DataManager(object):
                 :preds_endname: Suffix of the prediction files
                 :urls_fname: Name of the file containing urls only
             :db_info: a dictionary containing information about the database.
-                      Fields are:
+                      Fields depend on the typ of database. For instance,
+                      for mongo db, they are:
                 :name: Name of the database
                 :hostname: Name of the database host
                 :user: User name
@@ -111,14 +122,10 @@ class DataManager(object):
             used_folder = file_info['used_folder']
 
             # Revise path and folder terminations
-            if not project_path.endswith('/'):
-                project_path = project_path + '/'
-            if not input_folder.endswith('/'):
-                input_folder = input_folder + '/'
-            if not output_folder.endswith('/'):
-                output_folder = output_folder + '/'
-            if not used_folder.endswith('/'):
-                used_folder = used_folder + '/'
+            project_path = addSlash(project_path)
+            input_folder = addSlash(input_folder)
+            output_folder = addSlash(output_folder)
+            used_folder = addSlash(used_folder)
 
             # Folder containing all files related to labeling.
             self.directory = project_path
@@ -175,147 +182,6 @@ class DataManager(object):
 
         # Default value for predictions
         self._unknown_p = unknown_pred
-
-    def loadData(self):
-
-        """ Load data and label history from file.
-            This is the basic method to read the information about labels, urls
-            and predictions from files in the standard format.
-
-            If the dataset file or the labelhistory file does not exist, no
-            error is returned, though empty data variables are returned.
-
-            :Returns:
-                :df_labels:  Multi-index Pandas dataframe containing labels.
-                             Fields are:
-                    'info':  With columns marker', 'relabel', 'weight',
-                             'userId', 'date'
-                    'label': One column per categorie, containing the labels
-                :df_preds: Pandas dataframa indexed by the complete list of
-                           wids, with one column of urls and one addicional
-                           column per category containing predictions.
-                :labelhistory: Dictionary containing, for each wid, a record of
-                        the labeling events up to date.
-        """
-
-        if self.source_type == 'file':
-
-            # Read label history
-            if os.path.isfile(self.labelhistory_file):
-                if sys.version_info.major == 3:
-                    try:
-                        with open(self.labelhistory_file, 'rb') as f:
-                            labelhistory = pickle.load(f)
-                    except:
-                        print("---- Cannot read a pkl file version for " +
-                              "Python 2. Trying to load a json file.")
-                        print("---- An ERROR will arise if json file does " +
-                              "not exist.")
-                        print("---- IF THIS IS THE CASE, YOU SHOULD DO \n" +
-                              "         python run_pkl2json.py [path to "
-                              "labelhistory]\n" +
-                              "     FROM PYTHON 2 BEFORE RUNNING THIS SCRIPT.")
-                        fname = self.labelhistory_file.replace('.pkl', '.json')
-                        with open(fname, 'r', encoding='latin1') as f:
-                            labelhistory = json.load(f)
-
-                        # Convert date field, which is in string format, to
-                        # datetime format.
-                        for url, events in labelhistory.items():
-                            for idx, record in events.items():
-                                labelhistory[url][idx]['date'] = (
-                                    datetime.strptime(
-                                        labelhistory[url][idx]['date'],
-                                        "%Y-%m-%dT%H:%M:%S.%f"))
-                else:
-                    with open(self.labelhistory_file, 'r') as f:
-                        labelhistory = pickle.load(f)
-            else:
-                labelhistory = {}
-
-            # Load dataset files.
-            if (os.path.isfile(self.datalabels_file) and
-                    os.path.isfile(self.datapreds_file)):
-                # Load label and prediction dataframes stored in pickle files
-                df_labels = pd.read_pickle(self.datalabels_file)
-                df_preds = pd.read_pickle(self.datapreds_file)
-            elif os.path.isfile(self.dataset_file):
-                # If there is an old dataset structure, read data there and
-                # convert it into the label and preds dataframes
-                with open(self.dataset_file, 'r') as handle:
-                    data = pickle.load(handle)
-                df_labels, df_preds = self.get_df(data, labelhistory)
-            else:
-                # Warning: the next 4 commands are duplicated in importData.
-                # Make sure taht any changes here are also done there
-                # (I know, this is not a good programming style..)
-                info = ['marker', 'relabel', 'weight', 'userId', 'date']
-                arrays = [len(info)*['info'] + len(self.categories)*['label'],
-                          info + self.categories]
-                tuples = list(zip(*arrays))
-                mindex = pd.MultiIndex.from_tuples(tuples)
-                # Create empty pandas dataframe
-                df_labels = pd.DataFrame(self._unknown, index=[],
-                                         columns=mindex)
-                # df_labels = None
-                # df_preds = None
-                cols = ['url'] + self.categories
-                df_preds = pd.DataFrame(index=[], columns=cols)
-                print(df_preds)
-
-        else:
-
-            dbName = self.db_info['name']
-            hostname = self.db_info['hostname']
-            user = self.db_info['user']
-            pwd = self.db_info['pwd']
-            label_coll_name = self.db_info['label_coll_name']
-            history_coll_name = self.db_info['history_coll_name']
-            port = self.db_info['port']
-
-            try:
-                print("Trying connection...")
-                client = MongoClient(hostname)
-                client[dbName].authenticate(user, pwd)
-                db = client[dbName]
-                print("Connected to mongodb @ {0}:[{1}]".format(
-                    hostname, port))
-            except Exception as E:
-                print("Fail to connect mongodb @ {0}:{1}, {2}".format(
-                    hostname, port, E))
-                exit()
-
-            # Read label collection
-            collection = db[label_coll_name]
-            num_urls = collection.count()
-            data = {}
-            if num_urls > 0:
-                dataDB = collection.find({})
-                for i in range(num_urls):
-                    wid = dataDB[i]['idna']
-                    data[wid] = dataDB[i]['value']
-                    if 'url' not in data[wid]:
-                        data[wid]['url'] = wid
-
-            # Read history
-            collection = db[history_coll_name]
-            num_events = collection.count()
-            labelhistory = {}
-            if num_events > 0:
-                dataDB = collection.find({})
-                for i in range(num_events):
-                    wid = dataDB[i]['idna']
-                    labelhistory[wid] = dataDB[i]['value']
-
-            df_labels, df_preds = self.get_df(data, labelhistory)
-
-            # In the current version, predictions are not being stored in the
-            # mongo db. They must be loaded from files.
-            if os.path.isfile(self.datapreds_file):
-                # Load prediction dataframes stored in pickle files
-                df_preds = pd.read_pickle(self.datapreds_file)
-
-        return df_labels, df_preds, labelhistory
 
     def get_df(self, data, labelhistory):
 
@@ -849,7 +715,7 @@ class DataManager(object):
 
         # The following assignment can cause an error because dataset files
         # from older versions of this sw did not include a 'userId' entry.
-        if 'userId' in df_labels:
+        if 'userId' in df_labels['info']:
             userIds = df_labels[('info', 'userId')].to_dict()
         else:
             userIds = None
@@ -866,6 +732,10 @@ class DataManager(object):
             :Returns:
                 :hdict: A dictionary containing, for every url identifier (wid)
                         the record of the last time it was labeled
+
+            WARNING: I THINK THIS FUNCTION IS NO LONGER USED, BECAUSE THE DATA
+                     ABOUT THE LAST LABEL EVENT IS STORED IN THE LABELS
+                     DATAFRAME. THUS, IT CAN BE LIKELY REMOVED
         """
 
         #################################
@@ -1093,118 +963,3 @@ class DataManager(object):
         with open(path_labelh, "w") as f:
             f.writelines(list("%s\r\n" % item for item in data_out))
 
-    def migrate2DB(self, df_labels):
-
-        """ Migrate all labeled  urls in data to a mongo db.
-            The db collection, if it exists, is droped.
-
-            This function is deprecated because the 'data' dictionary is no
-            longer used.
-
-            :Args:
-                :data: Data dictionary containing the labels to save.
-        """
-
-        # Start a db connection
-        dbName = self.db_info['name']
-        hostname = self.db_info['hostname']
-        user = self.db_info['user']
-        pwd = self.db_info['pwd']
-        label_coll_name = self.db_info['label_coll_name']
-        file2db_mode = self.db_info['file2db_mode']
-
-        # history_coll_name = self.db_info['history_coll_name']
-        port = self.db_info['port']
-
-        try:
-            print("Trying db connection...")
-            client = MongoClient(hostname)
-            client[dbName].authenticate(user, pwd)
-            db = client[dbName]
-            print("Connected to mongodb @ {0}:[{1}]".format(hostname, port))
-        except Exception as E:
-            sys.exit("Fail to connect mongodb @ {0}:{1}, {2}".format(
-                hostname, port, E))
-
-        print("Saving database. This might take a while...")
-        start_time = time.time()
-        if file2db_mode == 'rewrite':
-            # The database is deleted completely and the whole set of
-            # labels and predictions in data are loaded
-            label_collection = db[label_coll_name]
-            label_collection.drop()
-        label_collection = db[label_coll_name]
-
-        for i, w in enumerate(df_labels.index):
-            # For each wid, create the corresponding data dictionary to
-            # send to the db
-            dataw = {}
-            dataw['relabel'] = df_labels.loc[w, ('info', 'relabel')]
-            dataw['marker'] = df_labels.loc[w, ('info', 'marker')]
-            dataw['userId'] = df_labels.loc[w, ('info', 'userId')]
-            dataw['date'] = df_labels.loc[w, ('info', 'date')]
-            dataw['weight'] = df_labels.loc[w, ('info', 'weight')]
-            dataw['label'] = {}
-            for c in self.categories:
-                dataw['label'][c] = df_labels.loc[w, ('label', c)]
-
-            # Store in db.
-            if file2db_mode == 'rewrite':
-                # Insert data in the database
-                label_collection.insert({'idna': w, 'value': dataw})
-            else:    # mode == 'update'
-                # The database is updated. Only the wids in dataw are
-                # modified.
-                label_collection.replace_one(
-                    {'idna': w}, {'idna': w, 'value': dataw}, upsert=True)
-
-            print(("\rSaving entry {0} out of {1}. Speed {2} entries" +
-                   "/min").format(i + 1, len(df_labels), 60 * (i+1) /
-                                  (time.time() - start_time)), end="")
-
-    def migrate2file(self):
-
-        ''' Migrate all labeled urls in the mongo db to a pickle data file
-            WARNING: THIS METHOD IS UNDER CONSTRUCTION.
-        '''
-
-        # Start a db connection
-        dbName = self.db_info['name']
-        hostname = self.db_info['hostname']
-        user = self.db_info['user']
-        pwd = self.db_info['pwd']
-        label_coll_name = self.db_info['label_coll_name']
-
-        # history_coll_name = self.db_info['history_coll_name']
-        port = self.db_info['port']
-
-        try:
-            print("Trying db connection...")
-            client = MongoClient(hostname)
-            client[dbName].authenticate(user, pwd)
-            db = client[dbName]
-            print("Connected to mongodb @ {0}:[{1}]".format(hostname, port))
-        except Exception as E:
-            sys.exit("Fail to connect mongodb @ {0}:{1}, {2}".format(
-                hostname, port, E))
-
-        print("Open collection...")
-        label_collection = db[label_coll_name]
-        start_time = time.time()
-
-        # count = 0
-        # for i, w in enumerate(data):
-        #     # Only the wids with at least some label are migrated to the db.
-        #     lab_list = [data[w]['label'][c] for c in self.categories]
-
-        #     if self._yes in lab_list or self._no in lab_list:
-        #         count += 1
-        #         label_collection.insert({'idna': w, 'value': data[w]})
-
-        #         print ("\rSaving entry {0} out of {1}. Speed {2} entries" +
-        #                "/min").format(i + 1, len(data), 60 * (i+1) /
-        #                               (time.time() - start_time)),
-
-        # print ""
-        # print "Migration finished: {0} out of {1} wids saved in DB".format(
-        #     count, len(data))

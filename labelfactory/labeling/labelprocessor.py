@@ -564,18 +564,33 @@ class LabelProcessor(object):
             to the current data set.
         """
 
-        for wid in newlabels:
+        if type(labelhistory) == dict:
+            # When the data source is file of mongodb, labelhistory is a dict
+            for wid in newlabels:
 
-            t = newlabels[wid]['date']
-            tid = t.strftime("%Y%m%d%H%M%S%f")
+                t = newlabels[wid]['date']
+                tid = t.strftime("%Y%m%d%H%M%S%f")
 
-            if wid not in labelhistory:
-                labelhistory[wid] = {tid: newlabels[wid]}
-            else:
-                labelhistory[wid][tid] = newlabels[wid]
+                if wid not in labelhistory:
+                    labelhistory[wid] = {tid: newlabels[wid]}
+                else:
+                    labelhistory[wid][tid] = newlabels[wid]
 
-            # Add user Id.
-            labelhistory[wid][tid]['userId'] = new_userId
+                # Add user Id.
+                labelhistory[wid][tid]['userId'] = new_userId
+
+        else:
+            # When the data source is sql, labelhistory is a pandas dataframe
+            for wid in newlabels:
+
+                t = newlabels[wid]['date']
+                tid = t.strftime("%Y%m%d%H%M%S%f")
+
+                new_entry = copy.copy(newlabels)
+                new_entry['wid'] = wid
+                new_entry['userId'] = new_userId
+                labelhistory = labelhistory.append(
+                    new_entry, ignore_index=True)
 
     def updateLabels(self, label2, label):
 

@@ -1,20 +1,34 @@
 [DataPaths]
 
-# Data source (options: file, mongodb)
+# Data source (options: file, mongodb, sql)
 source_type: file
 
 # Data destination (options: file, mongodb)
 # If mongodb, the data are stored both in file and mongodb
 dest_type: mongodb
 
-# Mongo DB settings
+# DB settings
 db_name: 
-db_hostname: 
 db_user: 
+
+# Mongo DB settings
+db_hostname: 
 db_pwd: 
 db_label_coll_name: labelData
 db_history_coll_name: labelHistory
 db_port: 
+
+# SQL DB settings
+db_server:
+db_password:
+# db_connector can be mysql or sqlite3
+db_connector:
+db_label_values_tablename: label_label
+db_label_info_tablename: label_info
+db_preds_tablename: predictions
+db_history_tablename: labelhistory
+# Name of the columns in sql databases that contain the item reference
+db_ref_name = Referencia
 
 # DB writing mode: rewrite or update
 db_mode: update
@@ -37,6 +51,12 @@ urls_fname: urls
 export_labels_fname: exported_labels
 
 [Labeler]
+# Transfer type: this variable states the way to incorporate new data
+#    project (no new urls are accepted from the input folder)
+#    expand  (new urls are accepted)
+#    contract (only urls in the input folder are preserved in the data structure)
+transfer_mode: project
+
 # Type of wid: if 'yes', the wid is computed as a transformation of the url.
 #              if 'no', the wid is taken equal to the url.
 #              if 'www', the wid is the result of removing www. from the url
@@ -49,7 +69,8 @@ datatype: url
 # Type of taxonomy: single (mutually exclusive classes), multi (multilabel)
 cat_model: single
 
-# List of categories. Every pair of categories A and B must satisfy 
+# List of categories. 
+# If cat_model = single, every pair of categories A and B must satisfy 
 # A in B, B in A, or intersection(A, B) = emptyset
 categories: ['Business-', 'Shop Online', 'Real Estate', 'Hotel', 'Transport', 
              'Newspapers',
@@ -100,28 +121,3 @@ track_user: yes
 # In multiclass cases, the reference class is the class used by the active
 # learning algorithm to compute the sample scores.
 ref_class: Business-
-
-# Max. no. of urls to be labeled at each labeling step
-num_urls: 20
-
-# Type of active learning algorithms
-type_al: tourney
-
-# AL threshold. This is used by the AL algorithm to compute the score
-# of each  sample. A standard choice is to set it equal to the 
-# decision threshold of the classifier model, but there may be good
-# reasons for other choices. For instance, is classes are umbalanced, 
-# we can take self.alth = 1 so as to promote sampling from the 
-# positive class
-alth: -1
-
-# Probability of AL sampling. Samples are selected using AL with 
-# probability p,
-# and using random sampling otherwise.
-p_al: 0.0
-
-# Probability of selecting a sample already labelled
-p_relabel: 0.1
-
-# Size of each tourney (only for 'tourney' AL algorithm)
-tourneysize: 20

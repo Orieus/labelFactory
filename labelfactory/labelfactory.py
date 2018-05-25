@@ -22,7 +22,8 @@ from labelfactory.labeling.LabelGUIController import LabelGUIController
 from labelfactory.labeling.urlsampler import URLsampler
 from labelfactory.ConfigCfg import ConfigCfg as Cfg
 from labelfactory.Log import Log
-from labelfactory.labeling.datamanager import DataManager
+from labelfactory.labeling.dmFiles import DM_Files
+from labelfactory.labeling.dmSQL import DM_SQL
 from labelfactory.labeling.labelprocessor import LabelProcessor
 
 if sys.version_info.major == 3:
@@ -52,17 +53,19 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
     Args:
 
         project_path: Path to the lebelling project
-        url:    Specific url to label. If None, a batch os labels is selected
-                from the available urls
+        url:       Specific url to label. If None, a batch os labels is
+                   selected from the available urls
         transfer_mode: Mode to transfer the new data:
-                    - expand (default)
-                    - project
-                    - contract
-        user:   username of the human annotator
+                     - expand (default)
+                     - project
+                     - contract
+        user:      username of the human annotator
         export_labels:
-                    - all (export all labels)
-                    - rs (export random sampling labels only)
-                    - al (export active learning labels only)
+                     - all (export all labels)
+                     - rs (export random sampling labels only)
+                     - al (export active learning labels only)
+        num_urls:  Number of items to label
+        ref_class: Name of the class used as reference for active learning
 
     """
 
@@ -131,7 +134,24 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
         dest_type = 'file'
 
     # Mongo DB settings
-    if source_type == 'mongodb' or dest_type == 'mongodb':
+    if source_type == 'sql':
+        db_info = {'name': cf.get('DataPaths', 'db_name'),
+                   'user': cf.get('DataPaths', 'db_user'),
+                   'server': cf.get('DataPaths', 'db_server'),
+                   'password': cf.get('DataPaths', 'db_password'),
+                   'connector': cf.get('DataPaths', 'db_connector'),
+                   'preds_tablename': cf.get(
+                        'DataPaths', 'db_preds_tablename'),
+                   'label_values_tablename': cf.get(
+                        'DataPaths', 'db_label_values_tablename'),
+                   'label_info_tablename': cf.get(
+                        'DataPaths', 'db_label_info_tablename'),
+                   'history_tablename': cf.get(
+                        'DataPaths', 'db_history_tablename'),
+                   'ref_name': cf.get(
+                        'DataPaths', 'db_ref_name'),
+                   'mode': cf.get('DataPaths', 'db_mode')}
+    elif source_type == 'mongodb' or dest_type == 'mongodb':
         db_info = {'name': cf.get('DataPaths', 'db_name'),
                    'hostname': cf.get('DataPaths', 'db_hostname'),
                    'user': cf.get('DataPaths', 'db_user'),
@@ -182,8 +202,7 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
 
     # List of categories to label.
     categories = ast.literal_eval(cf.get('Labeler', 'categories'))
-    # Note that for multilabel taxonomy models, the category tree information
-    # in the configuration file is ignored
+    # Taxonomy (dependency structure beween categories)
     parentcat = ast.literal_eval(cf.get('Labeler', 'parentcat'))
 
     fill_with_Other = cf.get('Labeler', 'fill_with_Other')
@@ -316,9 +335,14 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
     #####################
 
     # Data manager object
-    data_mgr = DataManager(source_type, dest_type, file_info, db_info,
-                           categories, parentcat, ref_class, alphabet,
-                           compute_wid, unknown_pred)
+    if source_type == 'file' or source_type == 'mongodb':
+        data_mgr = DM_Files(source_type, dest_type, file_info, db_info,
+                            categories, parentcat, ref_class, alphabet,
+                            compute_wid, unknown_pred)
+    elif source_type == 'sql':
+        data_mgr = DM_SQL(source_type, dest_type, file_info, db_info,
+                          categories, parentcat, ref_class, alphabet,
+                          compute_wid, unknown_pred)
 
     # Label processing object.
     labelproc = LabelProcessor(categories, parentcat, log, alphabet, cat_model)
@@ -329,8 +353,11 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
 
     log.info('Loading data')
 
+    import ipdb
+    ipdb.set_trace()
+
     # Load data from the standard datasets.
-    df_labels, df_preds, labelhistory = data_mgr.loadData(source_type)
+    df_labels, df_preds, labelhistory = data_mgr.loadData()
 
     # Load new labels and predictions from the input folder
     log.info("-- Loading new data from the input folder")
@@ -392,7 +419,6 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
         ########################
         # Show first url and GUI
         ########################
-
         # Start the controler.
         controller = LabelGUIController(newurls, newwids, newqueries, preds,
                                         labels, urls, categories, alphabet,
@@ -417,6 +443,7 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
 
         # Remove unlabeled urls
         controller.update_label_vector()
+
         # Transfer new labels to the label dataframe
         log.info('No more urls to label. Saving new labels...')
         labelproc.transferNewLabels2(controller.newlabels, df_labels, userId)
@@ -446,9 +473,12 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
                                   'mongodb')
             log.info(str(time.clock() - start) + ' seconds')
 
-        # Save data and label history into files
+        # Save data and label history into file or sql
         log.info("-- Saving data in files...")
         start = time.clock()
+        import ipdb
+        ipdb.set_trace()
+
         data_mgr.saveData(df_labels, df_preds, labelhistory)
         log.info(str(time.clock() - start) + ' seconds')
 
