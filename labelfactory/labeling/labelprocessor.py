@@ -564,33 +564,43 @@ class LabelProcessor(object):
             to the current data set.
         """
 
-        if type(labelhistory) == dict:
-            # When the data source is file of mongodb, labelhistory is a dict
-            for wid in newlabels:
+        for wid in newlabels:
 
-                t = newlabels[wid]['date']
-                tid = t.strftime("%Y%m%d%H%M%S%f")
+            t = newlabels[wid]['date']
+            tid = t.strftime("%Y%m%d%H%M%S%f")
 
-                if wid not in labelhistory:
-                    labelhistory[wid] = {tid: newlabels[wid]}
-                else:
-                    labelhistory[wid][tid] = newlabels[wid]
+            if wid not in labelhistory:
+                labelhistory[wid] = {tid: newlabels[wid]}
+            else:
+                labelhistory[wid][tid] = newlabels[wid]
 
-                # Add user Id.
-                labelhistory[wid][tid]['userId'] = new_userId
+            # Add user Id.
+            labelhistory[wid][tid]['userId'] = new_userId
 
-        else:
-            # When the data source is sql, labelhistory is a pandas dataframe
-            for wid in newlabels:
+    def formatLabelRecords(self, newlabels, new_userId=None):
 
-                t = newlabels[wid]['date']
-                tid = t.strftime("%Y%m%d%H%M%S%f")
+        """ Formats the label records in labelhistory to make it appropriate
+            to store in the sql database:
+                - dates in string format
+                - lists of string in single string format
+        """
 
-                new_entry = copy.copy(newlabels)
-                new_entry['wid'] = wid
-                new_entry['userId'] = new_userId
-                labelhistory = labelhistory.append(
-                    new_entry, ignore_index=True)
+        # First, we put the newlabel components in the appropriate format to
+        # save in the database.
+
+        nl = copy.copy(newlabels)
+        for wid in nl:
+            # Reformat date
+            nl[wid]['date'] = nl[wid]['date'].strftime("%Y%m%d%H%M%S%f")
+            # Transform list of labels into string
+            nl[wid]['label'] = '++'.join(nl[wid]['label'])
+            # Add user info
+            nl[wid]['userId'] = new_userId
+
+        # Store label record as a pandas dataframe
+        labelrecord = pd.DataFrame().from_dict(nl, orient='index')
+
+        return labelrecord
 
     def updateLabels(self, label2, label):
 

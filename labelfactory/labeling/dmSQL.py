@@ -12,6 +12,7 @@ import sqlite3
 from sqlalchemy import create_engine
 
 import ipdb
+import numpy as np
 
 # Local imports
 from labelfactory.labeling import baseDM
@@ -165,14 +166,10 @@ class DM_SQL(baseDM.BaseDM):
                 # Table for predictions
                 # The name 'url' has historical reasons, but it keeps the
                 # meaning: it specifies a kind of uniform resource location.
-                # sql_cmd = """CREATE TABLE predictions(
-                #                 Referencia TEXT,
-                #                 url TEXT
-                #                 )"""
-                sql_cmd = ("""CREATE TABLE tablename(
-                                Referencia TEXT,
+                sql_cmd = ("""CREATE TABLE {0}(
+                                {1} TEXT,
                                 url TEXT
-                                )""").replace('tablename', name)
+                                )""").format(name, self.ref_name)
                 self.__c.execute(sql_cmd)
 
                 # One prediction column per category
@@ -182,9 +179,9 @@ class DM_SQL(baseDM.BaseDM):
             elif name == self.label_values_tablename:
 
                 # Table for the label values
-                sql_cmd = ("""CREATE TABLE tablename(
-                                Referencia TEXT
-                                )""").replace('tablename', name)
+                sql_cmd = """CREATE TABLE {0}(
+                                {1} TEXT
+                                )""".format(name, self.ref_name)
                 self.__c.execute(sql_cmd)
 
                 # One label column per category
@@ -194,28 +191,28 @@ class DM_SQL(baseDM.BaseDM):
             elif name == self.label_info_tablename:
 
                 # Table for the label metadata
-                sql_cmd = ("""CREATE TABLE tablename(
-                                Referencia TEXT,
+                sql_cmd = ("""CREATE TABLE {0}(
+                                {1} TEXT,
                                 marker INTEGER,
                                 relabel INTEGER,
                                 weight INTEGER,
                                 userId TEXT,
                                 datestr TEXT
-                                )""").replace('tablename', name)
+                                )""").format(name, self.ref_name)
                 self.__c.execute(sql_cmd)
 
             elif name == self.history_tablename:
 
                 # Table for the historic record of labelling events
-                sql_cmd = ("""CREATE TABLE tablename(
-                                Referencia TEXT,
+                sql_cmd = ("""CREATE TABLE {0}(
+                                {1} TEXT,
                                 datestr TEXT,
                                 url TEXT,
                                 marker INTEGER,
                                 relabel INTEGER,
                                 label TEXT,
-                                userID TEXT
-                                )""").replace('tablename', name)
+                                userId TEXT
+                                )""").format(name, self.ref_name)
                 self.__c.execute(sql_cmd)
 
             else:
@@ -223,6 +220,156 @@ class DM_SQL(baseDM.BaseDM):
 
         # Commit changes
         self.__conn.commit()
+
+    def __insertInTable(self, tablename, columns, arguments):
+        """
+        Insert new records into table
+
+        Args:
+            tablename:  Name of table in which the data will be inserted
+            columns:    Name of columns for which data are provided
+            arguments:  A list of lists or tuples, each element associated
+                        to one new entry for the table
+
+        Taken from a code by Jeronimo Arenas
+        """
+
+        # If the list of values to insert is empty, return
+        if len(arguments) == 0:
+            return
+
+        # Make sure columns is a list, and not a single string
+        if not isinstance(columns, (list,)):
+            columns = [columns]
+
+        ncol = len(columns)
+
+        if len(arguments[0]) == ncol:
+            # Make sure the tablename is valid
+            if tablename in self.__getTableNames():
+                # Make sure we have a list of tuples; necessary for mysql
+                arguments = list(map(tuple, arguments))
+
+                sqlcmd = ('INSERT INTO ' + tablename +
+                          '(' + ','.join(columns) + ') VALUES (')
+                if self.connector == 'mysql':
+                    sqlcmd += '%s' + (ncol-1)*',%s' + ')'
+                else:
+                    sqlcmd += '?' + (ncol-1)*',?' + ')'
+
+                self.__c.executemany(sqlcmd, arguments)
+        else:
+            print('Error inserting data in table: number of columns mismatch')
+
+    def __setField(self, tablename, valueflds, values):
+        """
+        Update records of a DB table
+
+        Args:
+            tablename:  Table that will be modified
+            valueflds:  list with the names of the columns that will be updated
+                        (e.g., 'Lemas')
+            values:     A list of tuples in the format
+                           (index_colvalue, valuefldvalue)
+                        (e.g., [('Ref1', 'gen celula'),
+                               ('Ref2', 'big_data, algorithm')])
+
+        Taken from a code by Jeronimo Arenas
+        """
+
+        # Auxiliary function to circularly shift a tuple one position to the
+        # right
+        def circ_right_shift(tup):
+            ls = list(tup[1:]) + [tup[0]]
+            return tuple(ls)
+
+        # If the list of values to insert is empty, return
+        if len(values) == 0:
+            return
+
+        # Make sure valueflds is a list, and not a single string
+        if not isinstance(valueflds, (list,)):
+            valueflds = [valueflds]
+        ncol = len(valueflds)
+
+        if len(values[0]) == (ncol + 1):
+            # Make sure the tablename is valid
+            if tablename in self.__getTableNames():
+                # Make sure we have a list of tuples; necessary for mysql
+                # Put key value last in the tuples
+                values = list(map(circ_right_shift, values))
+
+                sqlcmd = 'UPDATE ' + tablename + ' SET '
+                if self.connector == 'mysql':
+                    sqlcmd += ', '.join([el+'=%s' for el in valueflds])
+                    sqlcmd += ' WHERE ' + self.ref_name + '=%s'
+                else:
+                    sqlcmd += ', '.join([el+'=?' for el in valueflds])
+                    sqlcmd += ' WHERE ' + self.ref_name + '=?'
+
+                self.__c.executemany(sqlcmd, values)
+        else:
+            print('Error updating table values: number of columns mismatch')
+
+    def __upsert(self, tablename, df):
+
+        """
+        Update records of a DB table with the values in the df
+        This function implements the following additional functionality:
+
+        - If there are columns in df that are not in the SQL table,
+          columns will be added
+        - New records will be created in the table if there are rows
+          in the dataframe without an entry already in the table. For this,
+          index_col indicates which is the column that will be used as an
+          index
+
+        Args:
+            tablename: Table that will be modified
+            df:        Dataframe to be saved in table tablename
+
+        Adapted from a code by Jeronimo Arenas.
+        """
+
+        # Check that table exists and index_col exists both in the Table and
+        # the Dataframe
+        if tablename not in self.__getTableNames():
+            sys.error('Upsert function failed: Table does not exist')
+        elif self.ref_name not in self.__getColumnNames(tablename):
+            sys.error("Upsert function failed: Key field does not exist" +
+                      "in the selected table")
+
+        # Create new columns if necessary
+        for clname in df.columns:
+            if clname not in self.__getColumnNames(tablename):
+                if df[clname].dtypes == np.float64:
+                    self.__addTableColumn(tablename, clname, 'DOUBLE')
+                elif df[clname].dtypes == np.int64:
+                    self.__addTableColumn(tablename, clname, 'INTEGER')
+                else:
+                    self.__addTableColumn(tablename, clname, 'TEXT')
+
+        # Check which values are already in the table, and split
+        # the dataframe into records that need to be updated, and
+        # records that need to be inserted
+        sqlQuery = 'SELECT ' + self.ref_name + ' FROM ' + tablename
+        keyintable = pd.read_sql(sqlQuery, con=self.__conn,
+                                 index_col=self.ref_name)
+        keyintable = keyintable.index.tolist()
+        # Add index as a column of the dataframe
+        df_ext = df.reset_index().rename(columns={'index': self.ref_name})
+        # Replace NaN with None, because mysql raises an error if nan is
+        # sent to a non numeric column.
+        if np.any(pd.isnull(df_ext)):
+            df_ext[pd.isnull(df_ext)] = None
+        values = [tuple(x) for x in df_ext.values]
+        values_insert = list(filter(lambda x: x[0] not in keyintable, values))
+        values_update = list(filter(lambda x: x[0] in keyintable, values))
+
+        self.__setField(tablename, df.columns.tolist(), values_update)
+        self.__insertInTable(tablename, df_ext.columns.tolist(), values_insert)
+
+        return
 
     def loadData(self):
 
@@ -232,12 +379,6 @@ class DM_SQL(baseDM.BaseDM):
 
             If the dataset file or the labelhistory file does not exist, no
             error is returned, though empty data variables are returned.
-
-            :Args:
-                :source_type: type of data source ('file' or 'db')
-                    Names of file sources should be stored in
-                    two DataMgr attributes: self.dataset_files and
-                    self.labelhistory_file
 
             :Returns:
                 :df_labels:  Multi-index Pandas dataframe containing labels.
@@ -365,7 +506,7 @@ class DM_SQL(baseDM.BaseDM):
 
         return
 
-    def saveData(self, df_labels, df_preds, labelhistory, dest='file'):
+    def saveData(self, df_labels, df_preds, labelrecord, dest='file'):
 
         """ Save label and prediction dataframes and labelhistory pickle files.
             If dest='mongodb', they are also saved in a mongo database.
@@ -377,16 +518,17 @@ class DM_SQL(baseDM.BaseDM):
                 'update'  :The data are upserted to the existing db.
 
             :Args:
-                :df_labels: Pandas dataframe of labels
-                :df_preds:  Pandas dataframe of predictions
-                :labelhistory:
+                :df_labels:   Pandas dataframe of labels
+                :df_preds:    Pandas dataframe of predictions
+                :labelrecord: Dataframe with the labelling events of this
+                              session
                 :dest: Type of destination: 'file' (data is saved in files) or
                  'mongodb'
         """
 
         # Connect to the database
         try:
-            ipdb.set_trace()
+
             if self.connector == 'mysql':
                 # self.__conn = MySQLdb.connect(
                 #     self.server, self.user, self.password, self.db_name)
@@ -411,39 +553,52 @@ class DM_SQL(baseDM.BaseDM):
             print("---- Error connecting to the database")
 
         # Save predictions.
-        # WARINING: the Predictions dataframe changes only when predictions
-        # have been imported. Thus, it should be not saved systematically.
-        # Save let see if replace works, and later we can test append.
-        # Note that column 'date' is rename 'columns 'datestr'
-        # (this is required because 'date' is a reserved word in sql)
-        df_preds.to_sql(
-            self.preds_tablename, self.__conn, if_exists='replace',
-            index=True, index_label=self.ref_name)
-
+        import ipdb
+        ipdb.set_trace()
+        self.__upsert(self.preds_tablename, df_preds)
         # Save labels
+        self.__upsert(self.label_info_tablename,
+                      df_labels['info'].rename(columns={'date': 'datestr'}))
+        self.__upsert(self.label_values_tablename, df_labels['label'])
+        # Save label history
+        self.__upsert(self.history_tablename,
+                      labelrecord.rename(columns={'date': 'datestr'}))
+        #                                            'wid': self.ref_name}))
 
-        # Drop tables
-        # Let's see if to_sql works.  If so, dropping tables is not necessary.
-        # self.__c.execute("DROP TABLE " + self.label_values_tablename)
-        # self.__createDBtable(self.label_values_tablename)
-        # self.__c.execute("DROP TABLE " + self.label_info_tablename)
-        # self.__c.execute("DROP TABLE " + self.label_history_tablename)
+        # # Save predictions.
+        # # WARINING: the Predictions dataframe changes only when predictions
+        # # have been imported. Thus, it should be not saved systematically.
+        # # Save let see if replace works, and later we can test append.
+        # # Note that column 'date' is rename 'columns 'datestr'
+        # # (this is required because 'date' is a reserved word in sql)
+        # df_preds.to_sql(
+        #     self.preds_tablename, self.__conn, if_exists='replace',
+        #     index=True, index_label=self.ref_name)
 
-        # let see if replace works, and later we can test append.
-        # Note that column 'date' is rename 'columns 'datestr'
-        # (this is required because 'date' is a reserved word in sql)
-        df_labels['info'].rename(columns={'date': 'datestr'}).to_sql(
-            self.label_info_tablename, self.__conn, if_exists='replace',
-            index=True, index_label=self.ref_name)
+        # # Save labels
 
-        df_labels['label'].to_sql(
-            self.label_values_tablename, self.__conn, if_exists='replace',
-            index=True, index_label=self.ref_name)
-        # Note that column 'date' is rename 'columns 'datestr'
-        # (this is required because 'date' is a reserved word in sql)
-        labelhistory.rename(
-            columns={'date': 'datestr', 'wid': self.ref_name}).to_sql(
-            self.history_tablename, self.__conn, if_exists='replace',
-            index=False, index_label=None)
+        # # Drop tables
+        # # Let's see if to_sql works.  If so, dropping tables is not necessary.
+        # # self.__c.execute("DROP TABLE " + self.label_values_tablename)
+        # # self.__createDBtable(self.label_values_tablename)
+        # # self.__c.execute("DROP TABLE " + self.label_info_tablename)
+        # # self.__c.execute("DROP TABLE " + self.label_history_tablename)
+
+        # # let see if replace works, and later we can test append.
+        # # Note that column 'date' is rename 'columns 'datestr'
+        # # (this is required because 'date' is a reserved word in sql)
+        # df_labels['info'].rename(columns={'date': 'datestr'}).to_sql(
+        #     self.label_info_tablename, self.__conn, if_exists='replace',
+        #     index=True, index_label=self.ref_name)
+
+        # df_labels['label'].to_sql(
+        #     self.label_values_tablename, self.__conn, if_exists='replace',
+        #     index=True, index_label=self.ref_name)
+        # # Note that column 'date' is rename 'columns 'datestr'
+        # # (this is required because 'date' is a reserved word in sql)
+        # labelhistory.rename(
+        #     columns={'date': 'datestr', 'wid': self.ref_name}).to_sql(
+        #     self.history_tablename, self.__conn, if_exists='replace',
+        #     index=False, index_label=None)
 
         self.__conn.commit()

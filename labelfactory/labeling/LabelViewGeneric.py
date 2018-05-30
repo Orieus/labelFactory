@@ -24,7 +24,7 @@ class LabelViewGeneric(tk.Frame):
     """
 
     def __init__(self, categories, master=None, cat_model='single',
-                 parent_cat={}):
+                 parent_cat={}, datatype='url', text2label=None):
 
         tk.Frame.__init__(self, master)
         master.wm_attributes("-topmost", 1)
@@ -36,17 +36,18 @@ class LabelViewGeneric(tk.Frame):
         self.main_label = None
         self.cat_model = cat_model
         self.parent_cat = parent_cat
+        self.datatype = datatype
+        self.text2label = text2label
 
         self.createWidgets(categories)
 
     def update_guilabel(self, new_label):
         """ Updates the Url label to show.
 
-           If url is None then the window is destroyed. Nothing left to label
-
            Args:
                 new_label: url to put as label in the window.
-                If None the GUI is destroyed
+                tex2label: A method to capture the text to be shown in the
+                           labelling window
         """
 
         if self.cat_model == 'single':
@@ -54,8 +55,15 @@ class LabelViewGeneric(tk.Frame):
         else:
             self.url_label['state'] = 'normal'
             self.url_label.delete(1.0, tk.END)
-            self.url_label.insert(tk.END, new_label)
+            if self.datatype == 'txt':
+                if self.text2label is None:
+                    # The content of "new_label" is the text to show.
+                    self.url_label.insert(tk.END, new_label)
+                else:
+                    # The content of "new_label" is the text to show.
+                    self.url_label.insert(tk.END, self.text2label(new_label))
             self.url_label['state'] = 'disabled'
+
         self.master.update()
 
         # This is the old version. Not needed because new_label is not None
@@ -68,12 +76,12 @@ class LabelViewGeneric(tk.Frame):
     def start_gui(self, new_label):
         """ Starts the GUI, puting the initial Url to show.
 
-           If url is None then the window is destroyed. Nothing left to label
-
            Args:
                 new_label: url to put as label in the window.
-                If None the GUI is not started
-        """
+                           If None the GUI is destroyed
+                tex2label: A method to capture the text to be shown in the
+                           labelling window
+    """
 
         if new_label:
             if self.cat_model == 'single':
@@ -81,14 +89,15 @@ class LabelViewGeneric(tk.Frame):
             else:
                 self.url_label['state'] = 'normal'
                 self.url_label.delete(1.0, tk.END)
-                self.url_label.insert(tk.END, new_label)
+                if self.datatype == 'txt':
+                    if self.text2label is None:
+                        # The content of "new_label" is the text to show.
+                        self.url_label.insert(tk.END, new_label)
+                    else:
+                        # The content of "new_label" is the text to show.
+                        self.url_label.insert(
+                            tk.END, self.text2label(new_label))
                 self.url_label['state'] = 'disabled'
-                # textoprueba = (
-                #     "ANALISIS DE LA INTERACCION DE LA REPLICASA DEL VIRUS DE" +
-                #     " LA HEPATITIS C CON LA QUINASA CELULAR AKT/PKB \n" +
-                #     "LOS VIRUS SON PARASITOS INTRACELULARES OBLIGADOS QUE " +
-                #     "INTERACCIONAN CON LA MAQUINARIA CELULAR EN TODOS Y CADA UNO DE LOS PASOS DE SU CICLO REPLICATIVO.  EL CONOCIMIENTO DE LA INTERACCION VIRUS-CELULA ABRE OPORTUNIDADES PARA MODULAR CADA UNO DE LOS COMPONENTES DE DICHA INTERACCION, ASI COMO LA INTERACCION MISMA. EL VIRUS DE LA HEPATITIS C (HCV) ES UN VIRUS CON TROPISMO HEPATICO, AGENTE CAUSAL DE LA HEPATITIS C, Y PRINCIPAL CAUSANTE DE CIRROSIS Y CARCINOMA HEPATOCELULAR. LAS RELACIONES QUE EL HCV ESTABLECE CON COMPONENTES CELULARES INCLUYEN, ENTRE OTROS, RECEPTORES DE MEMBRANA, PROTEINAS IMPLICADAS EN RUTAS DE SEÑALIZACION Y CONTROL DE CICLO CELULAR, RUTAS DEL METABOLISMO DEL RNA, ETC. MI GRUPO TIENE UNA GRAN EXPERIENCIA PREVIA EN EL ESTUDIO Y ANALISIS DE LA POLIMERASA DEL HCV. DESDE HACE UNOS AÑOS, Y COMO CONSECUENCIA DE UNA ESTANCIA POSDOCTORAL PREVIA DEL INVESTIGADOR PRINCIPAL, LA LINEA DE INVESTIGACION SE HA ABIERTO A FACTORES CELULARES QUE INTERACCIONAN CON LA POLIMERASA VIRAL. FRUTO DE ESTE TRABAJO, MI GRUPO DEFINIO LA INTERACCION DE NS5B CON EL RECEPTOR ALFA DE ESTROGENOS. MUY RECIENTEMENTE, Y LIDERANDO LA COLABORACION CON OTROS GRUPOS, HEMOS DEFINIDO LA INTERACCION DE NS5B CON LA QUINASA CELULAR AKT/PKB. LOS RESULTADOS OBTENIDOS, ACTUALMENTE ENVIADOS PARA SU PUBLICACION, INCLUYEN LA FOSFORILACION IN VITRO DE NS5B POR AKT/PKB RECOMBINANTE, EL EFECTO QUE UN INHIBIDOR ESPECIFICO DE AK/PKB PROVOCA EN EL MANTENIMIENTO DE UN REPLICON SUBGENOMICO O EN CELULAS INFECTADAS CON HCVCC, ASI COMO LA INTERACCION PROPIAMENTE DICHA ANALIZADA MEDIANTE EXPERIMENTOS DE CO-INMUNOPRECIPITACION. ADEMAS, LA CO-LOCALIZACION INTRACELULAR DE AKT/PKB CON NS5B, BIEN EXPRESADAS ECTOPICAMENTE DE MANERA TRANSITORIA (TRANSFECCION DE PLASMIDOS) O DE MANERA ESTABLE (MANTENIENDO UN REPLICON SUBGENOMICO), BIEN EN CELULAS QUE SOPORTAN ACTIVAMENTE LA INFECCION CON HCVCC, NOS HA PERMITIDO CONCLUIR QUE LA INTERACCION NS5B-AKT/PKB INDUCE UN CAMBIO EN LA LOCALIZACION INTRACELULAR DE AKT/PKB, PASANDO DE CITOPLASMICA A PERINUCLEAR, DONDE SE SITUAN LOS COMPLEJOS REPLICATIVOS DE HCV. OTROS GRUPOS HAN DEMOSTRADO QUE LA ACTIVACION DE AKT/PKB ES CRUCIAL EN LOS PASOS INICIALES DE LA INFECCION POR HCV, PERMITIENDO LA ENTRADA DEL VIRUS EN LA CELULA (LIU ET AL, J BIOL CHEM. 2012;287:41922-30; HUANG ET AL AUTOPHAGY. 2013;9(2):175-95). ESTA ACTIVACION, QUE TIENE LUGAR EN LA MEMBRANA PLASMATICA, DESAPARECE A LAS POCAS HORAS POSTINFECCION. ESTOS RESULTADOS PREVIOS TANTO DEL NUESTRO COMO DE OTROS GRUPOS NOS ANIMAN A SOLICITAR UN PROYECTO QUE NOS PERMITA AHONDAR EN ESTA INTERACCION, DEFINIENDO I) LOS RESIDUOS DE NS5B IMPLICADOS EN LA INTERACCION CON AKT/PKB, II) LOS RESIDUOS DE NS5B QUE SON FOSFORILADOS POR AKT/PKB, III) EL EFECTO QUE DICHA FOSFORILACION TENDRIA EN LA ACTIVIDAD DE NS5B, IV) EL EFECTO QUE EL CAMBIO DE LOCALIZACION DE AKT/PKB TIENE SOBRE EL CICLO REPLICATIVO DE HCV (PROBAR EL PRINCIPIO DE EXCLUSION DE LA SUPERINFECCION), Y V) EL EFECTO QUE NS5B TIENE SOBRE LA VIA DE SEÑALIZACION PI3K-AKT/PKB-MTOR. EL OBJETIVO ULTIMO DEL PRESENTE PROYECTO SERIA UN CONOCIMIENTO EXHAUSTIVO DE LA INTERACCION NS5B-AKT/PKB QUE PERMITA A MEDIO PLAZO LA POSIBLE MODULACION DE LAS ACTIVIDADES DE NS5B (EFECTO ANTIVIRAL) Y/O DE AKT/PKB (EFECTO ANTICANCERIGENO).")
-                # self.url_label.insert(tk.END, textoprueba)
 
             self.mainloop()
         else:

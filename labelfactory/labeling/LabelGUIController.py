@@ -29,7 +29,7 @@ class LabelGUIController(object):
 
     def __init__(self, newurls, newwids, newqueries, preds, labels, urls,
                  categories, alphabet, datatype='url', cat_model='single',
-                 parent_cat={}):
+                 parent_cat={}, text2label=None):
 
         """ This method initialize the sampler object. As part of this process
         it creates the AL objects required for the sample generation.
@@ -68,6 +68,7 @@ class LabelGUIController(object):
 
         # Initialization of other attributes.
         self.view = None
+        self.text2label = text2label
 
     def takeandshow_sample(self):
 
@@ -283,7 +284,9 @@ class LabelGUIController(object):
 
         self.view = LabelViewGeneric(self.categories, master=root,
                                      cat_model=self.cat_model,
-                                     parent_cat=self.parent_cat)
+                                     parent_cat=self.parent_cat,
+                                     datatype=self.datatype,
+                                     text2label=self.text2label)
 
         # Set the action for all categories in list 'categories'
         for class_name in self.categories:

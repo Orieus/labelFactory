@@ -44,7 +44,7 @@ CF_DEFAULT_PATH = "./config.cf.default"
 
 def run_labeler(project_path, url, transfer_mode, user, export_labels,
                 num_urls, type_al, ref_class, alth, p_al, p_relabel,
-                tourneysize):
+                tourneysize, text2label=None):
     """
     Runs the labelling application for a given labelling project.
 
@@ -64,9 +64,15 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
                      - all (export all labels)
                      - rs (export random sampling labels only)
                      - al (export active learning labels only)
-        num_urls:  Number of items to label
-        ref_class: Name of the class used as reference for active learning
-
+        num_urls:   Number of items to label
+        ref_class:  Name of the class used as reference for active learning
+        alth:       Active learning threshold
+        p_al:       Active learning probability
+        p_relabel:  Probability of selecting an already labeld sample to
+                    relabel
+        tourneysize:
+        text2label: Method to transform a url into a text to show in the
+                    labeling windows
     """
 
     # To complete the migration to python 3, I should replace all "raw_input"
@@ -302,9 +308,13 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
 
     # Verify that parentclass names are in the category set
     for c in parentcat:
-        if c not in categories or parentcat[c] not in categories:
-            log.error("There are unknown categories in the parentcat " +
-                      " dictionary")
+        if c not in categories:
+            log.error("Unknown category {} ".format(c) + "in the parentcat " +
+                      "dictionary. Revise the configuration file")
+            sys.exit()
+        elif parentcat[c] not in categories:
+            log.error("Unknown category {} ".format(parentcat[c]) + "in the" +
+                      " parentcat dictionary. Revise the configuration file")
             sys.exit()
 
     # Verify that ref_class is one of the given categories
@@ -352,9 +362,6 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
     ###################
 
     log.info('Loading data')
-
-    import ipdb
-    ipdb.set_trace()
 
     # Load data from the standard datasets.
     df_labels, df_preds, labelhistory = data_mgr.loadData()
@@ -422,7 +429,8 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
         # Start the controler.
         controller = LabelGUIController(newurls, newwids, newqueries, preds,
                                         labels, urls, categories, alphabet,
-                                        datatype, cat_model, parentcat)
+                                        datatype, cat_model, parentcat,
+                                        text2label)
 
         # Take the first url to work with and show it in a web browser
         controller.takeandshow_sample()
@@ -449,8 +457,15 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
         labelproc.transferNewLabels2(controller.newlabels, df_labels, userId)
         labelproc.transferNewWeights2(sampler.weights, df_labels)
         # Record new labeling events into the label history
-        labelproc.transferLabelRecords(controller.newlabels, labelhistory,
-                                       userId)
+        if source_type == 'sql':
+            # Making a difference with labelhistory (1) labelrecord is a
+            # pandas dataframe, not a dict, and (2) it contains the labelling
+            # events of this session only
+            labelrecord = labelproc.formatLabelRecords(controller.newlabels,
+                                                       userId)
+        else:
+            labelproc.transferLabelRecords(controller.newlabels, labelhistory,
+                                           userId)
 
         # Save results in a mongo DB.
         if dest_type == 'mongodb':
@@ -476,10 +491,13 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
         # Save data and label history into file or sql
         log.info("-- Saving data in files...")
         start = time.clock()
-        import ipdb
-        ipdb.set_trace()
 
-        data_mgr.saveData(df_labels, df_preds, labelhistory)
+        if source_type == 'sql':
+            # Add the new labelling events in the sql db history
+            data_mgr.saveData(df_labels, df_preds, labelrecord)
+        else:
+            # Store all label history.
+            data_mgr.saveData(df_labels, df_preds, labelhistory)
         log.info(str(time.clock() - start) + ' seconds')
 
         # ### Export data to other formats (csv files)
@@ -490,10 +508,11 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
             log.info(str(time.clock() - start) + ' seconds')
 
         # Export history
-        log.info("-- Exporting history")
-        start = time.clock()
-        data_mgr.exportHistory(labelhistory)
-        log.info(str(time.clock() - start) + ' seconds')
+        if source_type != 'sql':
+            log.info("-- Exporting history")
+            start = time.clock()
+            data_mgr.exportHistory(labelhistory)
+            log.info(str(time.clock() - start) + ' seconds')
 
     else:
 

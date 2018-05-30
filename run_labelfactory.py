@@ -12,12 +12,7 @@
 """
 
 import argparse
-
-
 import labelfactory.labelfactory as labelfactory
-
-CF_FNAME = "config.cf"
-CF_DEFAULT_PATH = "./config.cf.default"
 
 
 def main():
