@@ -382,6 +382,9 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
     df_preds = labelproc.transferPreds(df2_preds, df_preds, transfer_mode)
     df_labels = labelproc.transferLabels(df2_labels, df_labels)
 
+    import ipdb
+    ipdb.set_trace()
+
     # Read dataset
     log.info("-- Loading data from the repository")
     preds, labels, urls, markers, relabels, weights, userIds = \

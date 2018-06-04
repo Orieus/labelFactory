@@ -49,10 +49,15 @@ class LabelProcessor(object):
         self._error = alphabet['error']
         self.cat_model = cat_model
         self.alphabet = alphabet
+        self.ranklist = None
 
         # Check consistency of the label processing
         if not self.isTree():
             sys.exit("The structure of parent categories is not a tree")
+
+        # In the multilabel case, the positive labels can be integers
+        if self.cat_model == 'multi':
+            self.ranklist = [str(n + 1) for n in range(len(self.categories))]
 
     def isTree(self):
 
@@ -389,6 +394,8 @@ class LabelProcessor(object):
                 :df_labels:
         """
 
+        ipdb.set_trace()
+
         for wid in newlabels:
 
             # New category or categories
@@ -415,8 +422,12 @@ class LabelProcessor(object):
 
                 # Insert the category in a label vector
                 label_dict = dict.fromkeys(self.categories, self._unknown)
-                for c in cats:
-                    label_dict[c] = self._yes
+                if self.cat_model == 'single':
+                    for c in cats:
+                        label_dict[c] = self._yes
+                else:
+                    for n, c in enumerate(cats):
+                        label_dict[c] = str(n + 1)
 
                 # Propagate the positive label to all ancestors. Also, a
                 # negative label to the other non-descendant categories
@@ -429,9 +440,14 @@ class LabelProcessor(object):
                 # positive classes. This may be inefficient for large trees,
                 # because some categories have been already labeled with the
                 # negative class in the above lines.
-                for c in self.categories:
-                    if label_dict[c] != self._yes:
-                        label_dict[c] = self._no
+                if self.cat_model == 'single':
+                    for c in self.categories:
+                        if label_dict[c] != self._yes:
+                            label_dict[c] = self._no
+                else:
+                    for c in self.categories:
+                        if label_dict[c] not in self.ranklist:
+                            label_dict[c] = self._no
 
                 for c in self.categories:
                     df_labels.loc[wid, ('label', c)] = label_dict[c]
@@ -490,8 +506,15 @@ class LabelProcessor(object):
 
                 # Insert the category in a label vector
                 label_dict = dict.fromkeys(self.categories, self._unknown)
-                for c in cats:
-                    label_dict[c] = self._yes
+
+                # Note, that, in the multilabel case, the label records the
+                # the labeling order.
+                if self.cat_model == 'single':
+                    for c in cats:
+                        label_dict[c] = self._yes
+                else:
+                    for n, c in enumerate(cats):
+                        label_dict[c] = str(n + 1)
 
                 # Propagate the positive label to all ancestors. Also, a
                 # negative label to the other non-descendant categories
@@ -504,9 +527,15 @@ class LabelProcessor(object):
                 # positive classes. This may be inefficient for large trees,
                 # because some categories have been already labeled with the
                 # negative class in the above lines.
-                for c in self.categories:
-                    if label_dict[c] != self._yes:
-                        label_dict[c] = self._no
+                if self.cat_model == 'single':
+                    for c in self.categories:
+                        if label_dict[c] != self._yes:
+                            label_dict[c] = self._no
+                else:
+                    for c in self.categories:
+                        if label_dict[c] not in self.ranklist:
+                            label_dict[c] = self._no
+
                 data[wid]['label'] = label_dict
 
                 # Old "soft labeling". Insert new label in the data structure.
@@ -659,10 +688,16 @@ class LabelProcessor(object):
             # Propagate labels
             for cat in self.categories:
 
-                if new_label[cat] == self._yes:
-                    new_label = self.upwards(new_label, cat)[0]
-                elif new_label[cat] == self._no:
-                    new_label = self.downwards(new_label, cat)[0]
+                if self.cat_model == 'single':
+                    if new_label[cat] == self._yes:
+                        new_label = self.upwards(new_label, cat)[0]
+                    elif new_label[cat] == self._no:
+                        new_label = self.downwards(new_label, cat)[0]
+                else:
+                    if new_label[cat] in self.ranklist:
+                        new_label = self.upwards(new_label, cat)[0]
+                    elif new_label[cat] == self._no:
+                        new_label = self.downwards(new_label, cat)[0]
 
         if all(label[c] == self._no for c in self.categories):
             # The category set is assumed to be exhaustive.
@@ -724,17 +759,30 @@ class LabelProcessor(object):
             pc = self.parentcat[c]
 
             # If c is a child of cat...
-            if pc == cat:
-                if new_label[c] == self._yes:
-                    # Inconsistency. Return unknown to relabel
-                    isOK = False
-                    new_label = dict.fromkeys(new_label, self._unknown)
-                    break
-                elif new_label[c] == self._unknown:
-                    new_label[c] = self._no
-                    new_label, isOK = self.downwards(new_label, c)
-                    if not isOK:
+            if self.cat_model == 'single':
+                if pc == cat:
+                    if new_label[c] == self._yes:
+                        # Inconsistency. Return unknown to relabel
+                        isOK = False
+                        new_label = dict.fromkeys(new_label, self._unknown)
                         break
+                    elif new_label[c] == self._unknown:
+                        new_label[c] = self._no
+                        new_label, isOK = self.downwards(new_label, c)
+                        if not isOK:
+                            break
+            else:
+                if pc == cat:
+                    if new_label[c] in self.ranklist:
+                        # Inconsistency. Return unknown to relabel
+                        isOK = False
+                        new_label = dict.fromkeys(new_label, self._unknown)
+                        break
+                    elif new_label[c] == self._unknown:
+                        new_label[c] = self._no
+                        new_label, isOK = self.downwards(new_label, c)
+                        if not isOK:
+                            break
 
         return new_label, isOK
 

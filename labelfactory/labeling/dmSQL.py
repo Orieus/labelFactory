@@ -17,6 +17,8 @@ import numpy as np
 # Local imports
 from labelfactory.labeling import baseDM
 
+import time
+
 # Services from the project
 # sys.path.append(os.getcwd())
 
@@ -257,7 +259,10 @@ class DM_SQL(baseDM.BaseDM):
                 else:
                     sqlcmd += '?' + (ncol-1)*',?' + ')'
 
+                print("---- ---- Saving {0}".format(tablename))
+                start = time.clock()
                 self.__c.executemany(sqlcmd, arguments)
+                print(str(time.clock() - start) + ' seconds')
         else:
             print('Error inserting data in table: number of columns mismatch')
 
@@ -349,26 +354,42 @@ class DM_SQL(baseDM.BaseDM):
                 else:
                     self.__addTableColumn(tablename, clname, 'TEXT')
 
-        # Check which values are already in the table, and split
-        # the dataframe into records that need to be updated, and
-        # records that need to be inserted
+        # Check which values are already in the table, and split the dataframe
+        # into records that need to be updated, and records that need to be
+        # inserted
         sqlQuery = 'SELECT ' + self.ref_name + ' FROM ' + tablename
         keyintable = pd.read_sql(sqlQuery, con=self.__conn,
                                  index_col=self.ref_name)
         keyintable = keyintable.index.tolist()
-        # Add index as a column of the dataframe
-        df_ext = df.reset_index().rename(columns={'index': self.ref_name})
+
         # Replace NaN with None, because mysql raises an error if nan is
         # sent to a non numeric column.
-        if np.any(pd.isnull(df_ext)):
-            df_ext[pd.isnull(df_ext)] = None
-        values = [tuple(x) for x in df_ext.values]
-        values_insert = list(filter(lambda x: x[0] not in keyintable, values))
-        values_update = list(filter(lambda x: x[0] in keyintable, values))
+        if np.any(pd.isnull(df)):
+            df[pd.isnull(df)] = None
+        # values = [tuple(x) for x in df_ext.values]
+
+        # Split dataframe in the entries related to existing references
+        # and entries about new references
+        refs = set(df.index)
+        refs_old = list(refs & set(keyintable))  # Refs that exist in the db
+        refs_new = list(refs - set(refs_old))    # New refs
+
+        df_old = df.loc[refs_old]
+        df_new = df.loc[refs_new]
+
+        # Convert reference index into a new column
+        df_ext_old = df_old.reset_index().rename(
+            columns={'index': self.ref_name})
+        df_ext_new = df_new.reset_index().rename(
+            columns={'index': self.ref_name})
+
+        # Convert dataframe values into a list of tuples
+        values_update = [tuple(x) for x in df_ext_old.values]
+        values_insert = [tuple(x) for x in df_ext_new.values]
 
         self.__setField(tablename, df.columns.tolist(), values_update)
-        self.__insertInTable(tablename, df_ext.columns.tolist(), values_insert)
-
+        self.__insertInTable(tablename, df_ext_new.columns.tolist(),
+                             values_insert)
         return
 
     def loadData(self):
@@ -552,10 +573,8 @@ class DM_SQL(baseDM.BaseDM):
         except:
             print("---- Error connecting to the database")
 
-        # Save predictions.
         import ipdb
         ipdb.set_trace()
-        self.__upsert(self.preds_tablename, df_preds)
         # Save labels
         self.__upsert(self.label_info_tablename,
                       df_labels['info'].rename(columns={'date': 'datestr'}))
@@ -564,11 +583,13 @@ class DM_SQL(baseDM.BaseDM):
         self.__upsert(self.history_tablename,
                       labelrecord.rename(columns={'date': 'datestr'}))
         #                                            'wid': self.ref_name}))
+        # Save predictions.
+        # WARNING: the Predictions dataframe changes only when predictions
+        # have been imported. Thus, it should be not saved systematically.
+        self.__upsert(self.preds_tablename, df_preds)
 
         # # Save predictions.
-        # # WARINING: the Predictions dataframe changes only when predictions
-        # # have been imported. Thus, it should be not saved systematically.
-        # # Save let see if replace works, and later we can test append.
+        # # Let's see if replace works, and later we can test append.
         # # Note that column 'date' is rename 'columns 'datestr'
         # # (this is required because 'date' is a reserved word in sql)
         # df_preds.to_sql(
@@ -578,7 +599,7 @@ class DM_SQL(baseDM.BaseDM):
         # # Save labels
 
         # # Drop tables
-        # # Let's see if to_sql works.  If so, dropping tables is not necessary.
+        # # Let's see if to_sql works. If so, dropping tables is not necessary.
         # # self.__c.execute("DROP TABLE " + self.label_values_tablename)
         # # self.__createDBtable(self.label_values_tablename)
         # # self.__c.execute("DROP TABLE " + self.label_info_tablename)
