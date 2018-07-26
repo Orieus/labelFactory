@@ -370,6 +370,7 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
     log.info("-- Loading new data from the input folder")
     start = time.clock()
     df2_labels, df2_preds = data_mgr.importData()
+    save_preds = (len(df2_preds) > 0)
     print(str(time.clock() - start) + ' seconds')
 
     # Clean and format label dataframe.
@@ -381,9 +382,6 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
     # Integrate imported labels and predictions into df_preds and df_labels.
     df_preds = labelproc.transferPreds(df2_preds, df_preds, transfer_mode)
     df_labels = labelproc.transferLabels(df2_labels, df_labels)
-
-    import ipdb
-    ipdb.set_trace()
 
     # Read dataset
     log.info("-- Loading data from the repository")
@@ -443,6 +441,7 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
         log.info("Type of Active Learning algorithm: " + type_al)
         root = tk.Tk()
         root.title('The Label Factory')
+
         controller.init_view(root)
 
         # At this point the GUI is running.
@@ -497,10 +496,11 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
 
         if source_type == 'sql':
             # Add the new labelling events in the sql db history
-            data_mgr.saveData(df_labels, df_preds, labelrecord)
+            data_mgr.saveData(df_labels, df_preds, labelrecord, save_preds)
         else:
             # Store all label history.
-            data_mgr.saveData(df_labels, df_preds, labelhistory)
+            data_mgr.saveData(df_labels, df_preds, labelhistory,
+                              save_preds=save_preds)
         log.info(str(time.clock() - start) + ' seconds')
 
         # ### Export data to other formats (csv files)

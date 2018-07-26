@@ -27,7 +27,9 @@ class LabelViewGeneric(tk.Frame):
                  parent_cat={}, datatype='url', text2label=None):
 
         tk.Frame.__init__(self, master)
-        master.wm_attributes("-topmost", 1)
+        if datatype == 'url':
+            master.wm_attributes("-topmost", 1)
+
         self.grid()
 
         # Initializations
@@ -140,13 +142,13 @@ class LabelViewGeneric(tk.Frame):
                 self.mybuttons[class_name] = tk.Button(
                     self, text=class_name, bg='magenta',
                     activebackground='red', activeforeground='green',
-                    disabledforeground='cyan')
+                    disabledforeground='cyan', relief=tk.RAISED)
                 self.mybuttons[class_name].grid(row=r, column=c)
                 c = (c + 1) % 3
                 r = r + (c == 0)
 
             # Error button
-            self.mybuttons['error'] = tk.Button(self)
+            self.mybuttons['error'] = tk.Button(self, relief=tk.RAISED)
             self.mybuttons['error']["text"] = "Error"
             self.mybuttons['error'].grid(row=r, column=c)
 
@@ -155,7 +157,8 @@ class LabelViewGeneric(tk.Frame):
                 # Add one more buttom to finish labeling
                 c = (c + 1) % 3
                 r = r + (c == 0)
-                self.mybuttons['end'] = tk.Button(self, text="END")
+                self.mybuttons['end'] = tk.Button(self, text="END",
+                                                  relief=tk.RAISED)
                 self.mybuttons['end'].grid(row=r, column=c, sticky=tk.W)
 
                 # Create the main label
@@ -199,7 +202,7 @@ class LabelViewGeneric(tk.Frame):
 
                 c = 0
                 # Create button for the root class
-                self.mybuttons[rc] = tk.Button(self, text=rc)
+                self.mybuttons[rc] = tk.Button(self, text=rc, relief=tk.RAISED)
                 self.mybuttons[rc].grid(row=r, column=c, sticky=tk.W)
 
                 for class_name in sc:
@@ -207,21 +210,23 @@ class LabelViewGeneric(tk.Frame):
                     c += 1
                     # Create button for the subcategories of the root class
                     self.mybuttons[class_name] = tk.Button(
-                        self, text=class_name)
+                        self, text=class_name, relief=tk.RAISED)
                     self.mybuttons[class_name].grid(row=r, column=c,
                                                     sticky=tk.W)
 
                 r += 1
 
             # Error button
-            self.mybuttons['error'] = tk.Button(self, text="Error")
+            self.mybuttons['error'] = tk.Button(self, text="Error",
+                                                relief=tk.RAISED)
             self.mybuttons['error'].grid(row=r, column=c, sticky=tk.W)
 
             if self.cat_model == 'multi':
 
                 # Add one more buttom to finish labeling
                 c += 1
-                self.mybuttons['end'] = tk.Button(self, text="END")
+                self.mybuttons['end'] = tk.Button(self, text="END",
+                                                  relief=tk.RAISED)
                 self.mybuttons['end'].grid(row=r, column=c, sticky=tk.W)
 
                 # Create the main label

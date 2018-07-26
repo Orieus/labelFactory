@@ -7,16 +7,13 @@ import os
 import sys
 # import cPickle as pickle
 import pickle
-import json
 import shutil
 import pandas as pd
 import numpy as np
 
 # import copy
-import time
 from datetime import datetime
 
-from pymongo import MongoClient
 import ipdb
 
 # Services from the project
@@ -673,7 +670,7 @@ class BaseDM(object):
 
     def getDataset(self, df_labels, df_preds):
 
-        """ Read the whole dataset from pickle files containing predictions,
+        """ Read the whole dataset from dataframes containing predictions,
             labels and the labeling history.
 
             :Args:
@@ -774,118 +771,6 @@ class BaseDM(object):
                 hdict[wid]['userId'] = None
 
         return hdict
-
-    def saveData(self, df_labels, df_preds, labelhistory, dest='file'):
-
-        """ Save label and prediction dataframes and labelhistory pickle files.
-            If dest='mongodb', they are also saved in a mongo database.
-
-            If dest='mongodb', the dataframes are store in the mode specified
-            in self.db_info['mode'].
-                'rewrite' :The existing db collection is removed and data are
-                           saved in a new one
-                'update'  :The data are upserted to the existing db.
-
-            :Args:
-                :df_labels: Pandas dataframe of labels
-                :df_preds:  Pandas dataframe of predictions
-                :labelhistory:
-                :dest: Type of destination: 'file' (data is saved in files) or
-                 'mongodb'
-        """
-
-        if dest == 'file':
-            # Keep a copy of the original datasets, just in case some
-            # mistakes are made during labelling
-            date_str = datetime.now().strftime("%Y%m%d%H%M%S%f")
-            if os.path.isfile(self.dataset_file):
-                dest_file = (self.used_path + self.dataset_fname + '_' +
-                             date_str + '.pkl')
-                shutil.move(self.dataset_file, dest_file)
-            if os.path.isfile(self.datalabels_file):
-                dest_file = (self.used_path + self.datalabels_fname + '_' +
-                             date_str + '.pkl')
-                shutil.move(self.datalabels_file, dest_file)
-            if os.path.isfile(self.datapreds_file):
-                dest_file = (self.used_path + self.datapreds_fname + '_' +
-                             date_str + '.pkl')
-                shutil.move(self.datapreds_file, dest_file)
-            if os.path.isfile(self.labelhistory_file):
-                dest_file = (self.used_path + self.labelhistory_fname + '_' +
-                             date_str + '.pkl')
-                shutil.move(self.labelhistory_file, dest_file)
-
-            # Save label history
-            with open(self.labelhistory_file, 'wb') as f:
-                pickle.dump(labelhistory, f)
-
-            # Save dataframes to files
-            df_labels.to_pickle(self.datalabels_file)
-            df_preds.to_pickle(self.datapreds_file)
-
-        else:
-
-            # Start a db connection
-            dbName = self.db_info['name']
-            hostname = self.db_info['hostname']
-            user = self.db_info['user']
-            pwd = self.db_info['pwd']
-            label_coll_name = self.db_info['label_coll_name']
-            mode = self.db_info['mode']
-
-            # history_coll_name = self.db_info['history_coll_name']
-            port = self.db_info['port']
-
-            try:
-                print("Trying db connection...")
-                client = MongoClient(hostname)
-                client[dbName].authenticate(user, pwd)
-                db = client[dbName]
-                # history_collection = db[history_coll_name]
-                print("Connected to mongodb @ {0}:[{1}]".format(
-                    hostname, port))
-            except Exception as E:
-                print("Fail to connect mongodb @ {0}:{1}, {2}".format(
-                    hostname, port, E))
-                exit()
-
-            start_time = time.time()
-            print("Saving database. This might take a while...")
-            if mode == 'rewrite':
-                # The database is deleted completely and the whole set of
-                # labels and predictions in data are loaded
-                label_collection = db[label_coll_name]
-                label_collection.drop()
-
-            # Open collection, or create it, if it does not exist.
-            label_collection = db[label_coll_name]
-
-            for i, w in enumerate(df_labels.index):
-                # For each wid, create the corresponding data dictionary to
-                # send to the db
-                dataw = {}
-                dataw['relabel'] = df_labels.loc[w, ('info', 'relabel')]
-                dataw['marker'] = df_labels.loc[w, ('info', 'marker')]
-                dataw['userId'] = df_labels.loc[w, ('info', 'userId')]
-                dataw['date'] = df_labels.loc[w, ('info', 'date')]
-                dataw['weight'] = df_labels.loc[w, ('info', 'weight')]
-                dataw['label'] = {}
-                for c in self.categories:
-                    dataw['label'][c] = df_labels.loc[w, ('label', c)]
-
-                # Store in db.
-                if mode == 'rewrite':
-                    # Insert data in the database
-                    label_collection.insert({'idna': w, 'value': dataw})
-                else:    # mode == 'update'
-                    # The database is updated. Only the wids in dataw are
-                    # modified.
-                    label_collection.replace_one(
-                        {'idna': w}, {'idna': w, 'value': dataw}, upsert=True)
-
-                print(("\rSaving entry {0} out of {1}. Speed {2} entries" +
-                       "/min").format(i + 1, len(df_labels), 60 * (i+1) /
-                                      (time.time() - start_time)), end="")
 
     def exportLabels(self, df_labels, category):
 

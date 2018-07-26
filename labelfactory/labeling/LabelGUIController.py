@@ -337,12 +337,12 @@ class LabelGUIController(object):
             relief = self.view.mybuttons[class_name]['relief']
 
             if class_name in self.categories:
-                if relief == 'flat':
+                if relief == 'raised':
 
                     # If error button is pressed, unpress.
                     if self.view.mybuttons['error']['relief'] == 'sunken':
                         self.view.mybuttons['error'].config(
-                            relief=tk.FLAT, text='error')
+                            relief=tk.RAISED, text='error')
 
                     # Add label to the list of labeled categories
                     self.newlabels[self.wid]['label'].append(class_name)
@@ -352,16 +352,16 @@ class LabelGUIController(object):
                     # Unpress button and remove category from the list
                     self.newlabels[self.wid]['label'].remove(class_name)
                     self.view.mybuttons[class_name].config(
-                        relief=tk.FLAT, text=class_name)
+                        relief=tk.RAISED, text=class_name)
                 else:
                     exit('---- OOPS: Unexpected relief value in button')
 
             elif class_name == 'error':
 
-                if relief == 'flat':
+                if relief == 'raised':
                     # Unpress all buttons
                     for c in self.categories:
-                        self.view.mybuttons[c].config(relief=tk.FLAT, text=c)
+                        self.view.mybuttons[c].config(relief=tk.RAISED, text=c)
 
                     # Remove labels and mark as error
                     self.newlabels[self.wid]['label'] = ['error']
@@ -372,14 +372,14 @@ class LabelGUIController(object):
                     # Unpress button and remove category from the list
                     self.newlabels[self.wid]['label'].remove(class_name)
                     self.view.mybuttons[class_name].config(
-                        relief=tk.FLAT, text=class_name)
+                        relief=tk.RAISED, text=class_name)
                 else:
                     exit('---- OOPS: Unexpected relief value in button')
 
             elif class_name == 'end':
 
                 for c in self.categories:
-                    self.view.mybuttons[c].config(relief=tk.FLAT, text=c)
+                    self.view.mybuttons[c].config(relief=tk.RAISED, text=c)
                 # Annotate the date.
                 self.newlabels[self.wid]['date'] = datetime.now()
                 # Go to the next sample to label.

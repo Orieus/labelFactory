@@ -68,10 +68,22 @@ class DM_SQL(baseDM.BaseDM):
         self.ref_name = self.db_info['ref_name']
 
         # Private variables
-        self.__c = None
-        self.__conn = None
+        self._c = None
+        self._conn = None
 
-    def __getTableNames(self):
+    def __del__(self):
+        """
+        When destroying the object, it is necessary to commit changes
+        in the database and close the connection
+        """
+
+        try:
+            self._conn.commit()
+            self._conn.close()
+        except:
+            print("---- Error closing database")
+
+    def _getTableNames(self):
         """
         Returns a list with the names of all tables in the database
         (taken from a code by Jeronimo Arenas)
@@ -84,12 +96,12 @@ class DM_SQL(baseDM.BaseDM):
         else:
             sqlcmd = "SELECT name FROM sqlite_master WHERE type='table'"
 
-        self.__c.execute(sqlcmd)
-        tbnames = [el[0] for el in self.__c.fetchall()]
+        self._c.execute(sqlcmd)
+        tbnames = [el[0] for el in self._c.fetchall()]
 
         return tbnames
 
-    def __getColumnNames(self, tablename):
+    def _getColumnNames(self, tablename):
         """
         Returns a list with the names of all columns in the indicated table
         (taken from a code by Jeronimo Arenas)
@@ -99,17 +111,17 @@ class DM_SQL(baseDM.BaseDM):
         """
 
         # Check if tablename exists in database
-        if tablename in self.__getTableNames():
+        if tablename in self._getTableNames():
             # The specific command depends on whether we are using mysql or
             #  sqlite
             if self.connector == 'mysql':
                 sqlcmd = "SHOW COLUMNS FROM " + tablename
-                self.__c.execute(sqlcmd)
-                columnnames = [el[0] for el in self.__c.fetchall()]
+                self._c.execute(sqlcmd)
+                columnnames = [el[0] for el in self._c.fetchall()]
             else:
                 sqlcmd = "PRAGMA table_info(" + tablename + ")"
-                self.__c.execute(sqlcmd)
-                columnnames = [el[1] for el in self.__c.fetchall()]
+                self._c.execute(sqlcmd)
+                columnnames = [el[1] for el in self._c.fetchall()]
 
             return columnnames
 
@@ -118,7 +130,7 @@ class DM_SQL(baseDM.BaseDM):
                   'database')
             return []
 
-    def __addTableColumn(self, tablename, columnname, columntype):
+    def _addTableColumn(self, tablename, columnname, columntype):
         """
         Add a new column to the specified table
 
@@ -130,17 +142,17 @@ class DM_SQL(baseDM.BaseDM):
         """
 
         # Check if the table exists
-        if tablename in self.__getTableNames():
+        if tablename in self._getTableNames():
 
             # Check that the column does not already exist
-            if columnname not in self.__getColumnNames(tablename):
+            if columnname not in self._getColumnNames(tablename):
 
                 sqlcmd = ('ALTER TABLE ' + tablename + ' ADD COLUMN ' +
                           columnname + ' ' + columntype)
-                self.__c.execute(sqlcmd)
+                self._c.execute(sqlcmd)
 
                 # Commit changes
-                self.__conn.commit()
+                self._conn.commit()
 
             else:
                 print(
@@ -150,9 +162,9 @@ class DM_SQL(baseDM.BaseDM):
         else:
             print('Error adding column to table. Please, select a valid ' +
                   'table name from the list')
-            print(self.__getTableNames())
+            print(self._getTableNames())
 
-    def __createDBtable(self, tablenames=None):
+    def _createDBtable(self, tablenames=None):
         """
         Creates any of the project tables.
 
@@ -160,6 +172,14 @@ class DM_SQL(baseDM.BaseDM):
                 tablenames :Name of any of the project tables. If None, all
                             tables required by a labeling project are created.
         """
+
+        # Fit characters to the allowed format
+        if self.connector == 'mysql':
+            # We need to enforze utf8 for mysql
+            fmt = ' CHARACTER SET utf8'
+        else:
+            # For sqlite 3 no formatting is required.
+            fmt = ''
 
         for name in tablenames:
 
@@ -169,61 +189,62 @@ class DM_SQL(baseDM.BaseDM):
                 # The name 'url' has historical reasons, but it keeps the
                 # meaning: it specifies a kind of uniform resource location.
                 sql_cmd = ("""CREATE TABLE {0}(
-                                {1} TEXT,
-                                url TEXT
-                                )""").format(name, self.ref_name)
-                self.__c.execute(sql_cmd)
+                                {1} VARCHAR(30){2} PRIMARY KEY,
+                                url TEXT{2}
+                                )""").format(name, self.ref_name, fmt)
+                self._c.execute(sql_cmd)
 
                 # One prediction column per category
                 for cat in self.categories:
-                    self.__addTableColumn(name, cat, 'DOUBLE')
+                    self._addTableColumn(name, cat, 'DOUBLE')
 
             elif name == self.label_values_tablename:
 
                 # Table for the label values
                 sql_cmd = """CREATE TABLE {0}(
-                                {1} TEXT
-                                )""".format(name, self.ref_name)
-                self.__c.execute(sql_cmd)
+                                {1} VARCHAR(30){2} PRIMARY KEY,
+                                )""".format(name, self.ref_name, fmt)
+                self._c.execute(sql_cmd)
 
                 # One label column per category
                 for cat in self.categories:
-                    self.__addTableColumn(name, cat, 'INTEGER')
+                    self._addTableColumn(name, cat, 'INTEGER')
 
             elif name == self.label_info_tablename:
 
                 # Table for the label metadata
                 sql_cmd = ("""CREATE TABLE {0}(
-                                {1} TEXT,
+                                {1} VARCHAR(30){2} PRIMARY KEY,
                                 marker INTEGER,
                                 relabel INTEGER,
                                 weight INTEGER,
-                                userId TEXT,
-                                datestr TEXT
-                                )""").format(name, self.ref_name)
-                self.__c.execute(sql_cmd)
+                                userId TEXT{2},
+                                datestr TEXT{2}
+                                labelstr TEXT{0}
+                                )""").format(name, self.ref_name, fmt)
+                self._c.execute(sql_cmd)
 
             elif name == self.history_tablename:
 
                 # Table for the historic record of labelling events
                 sql_cmd = ("""CREATE TABLE {0}(
-                                {1} TEXT,
-                                datestr TEXT,
-                                url TEXT,
+                                {1} VARCHAR(30){2} PRIMARY KEY,
+                                datestr TEXT{2},
+                                url TEXT{2},
                                 marker INTEGER,
                                 relabel INTEGER,
-                                label TEXT,
-                                userId TEXT
-                                )""").format(name, self.ref_name)
-                self.__c.execute(sql_cmd)
+                                label TEXT{2},
+                                userId TEXT{2}
+                                )""").format(name, self.ref_name, fmt)
+                self._c.execute(sql_cmd)
 
             else:
                 sys.exit('---- ERROR: Wrong table name')
 
         # Commit changes
-        self.__conn.commit()
+        self._conn.commit()
 
-    def __insertInTable(self, tablename, columns, arguments):
+    def _insertInTable(self, tablename, columns, arguments):
         """
         Insert new records into table
 
@@ -248,7 +269,7 @@ class DM_SQL(baseDM.BaseDM):
 
         if len(arguments[0]) == ncol:
             # Make sure the tablename is valid
-            if tablename in self.__getTableNames():
+            if tablename in self._getTableNames():
                 # Make sure we have a list of tuples; necessary for mysql
                 arguments = list(map(tuple, arguments))
 
@@ -261,12 +282,15 @@ class DM_SQL(baseDM.BaseDM):
 
                 print("---- ---- Saving {0}".format(tablename))
                 start = time.clock()
-                self.__c.executemany(sqlcmd, arguments)
+                self._c.executemany(sqlcmd, arguments)
                 print(str(time.clock() - start) + ' seconds')
+
+                # Commit changes
+                self._conn.commit()
         else:
             print('Error inserting data in table: number of columns mismatch')
 
-    def __setField(self, tablename, valueflds, values):
+    def _setField(self, tablename, valueflds, values):
         """
         Update records of a DB table
 
@@ -299,7 +323,7 @@ class DM_SQL(baseDM.BaseDM):
 
         if len(values[0]) == (ncol + 1):
             # Make sure the tablename is valid
-            if tablename in self.__getTableNames():
+            if tablename in self._getTableNames():
                 # Make sure we have a list of tuples; necessary for mysql
                 # Put key value last in the tuples
                 values = list(map(circ_right_shift, values))
@@ -312,11 +336,15 @@ class DM_SQL(baseDM.BaseDM):
                     sqlcmd += ', '.join([el+'=?' for el in valueflds])
                     sqlcmd += ' WHERE ' + self.ref_name + '=?'
 
-                self.__c.executemany(sqlcmd, values)
+                self._c.executemany(sqlcmd, values)
+
+                # Commit changes
+                self._conn.commit()
+
         else:
             print('Error updating table values: number of columns mismatch')
 
-    def __upsert(self, tablename, df):
+    def _upsert(self, tablename, df):
 
         """
         Update records of a DB table with the values in the df
@@ -338,34 +366,38 @@ class DM_SQL(baseDM.BaseDM):
 
         # Check that table exists and index_col exists both in the Table and
         # the Dataframe
-        if tablename not in self.__getTableNames():
+        if tablename not in self._getTableNames():
             sys.error('Upsert function failed: Table does not exist')
-        elif self.ref_name not in self.__getColumnNames(tablename):
+        elif self.ref_name not in self._getColumnNames(tablename):
             sys.error("Upsert function failed: Key field does not exist" +
                       "in the selected table")
 
         # Create new columns if necessary
         for clname in df.columns:
-            if clname not in self.__getColumnNames(tablename):
+            if clname not in self._getColumnNames(tablename):
                 if df[clname].dtypes == np.float64:
-                    self.__addTableColumn(tablename, clname, 'DOUBLE')
+                    self._addTableColumn(tablename, clname, 'DOUBLE')
                 elif df[clname].dtypes == np.int64:
-                    self.__addTableColumn(tablename, clname, 'INTEGER')
+                    self._addTableColumn(tablename, clname, 'INTEGER')
                 else:
-                    self.__addTableColumn(tablename, clname, 'TEXT')
+                    self._addTableColumn(tablename, clname, 'TEXT')
+
+        # This is to update changes made by other processes.
+        self._conn.commit()
 
         # Check which values are already in the table, and split the dataframe
         # into records that need to be updated, and records that need to be
         # inserted
         sqlQuery = 'SELECT ' + self.ref_name + ' FROM ' + tablename
-        keyintable = pd.read_sql(sqlQuery, con=self.__conn,
+        keyintable = pd.read_sql(sqlQuery, con=self._conn,
                                  index_col=self.ref_name)
         keyintable = keyintable.index.tolist()
 
         # Replace NaN with None, because mysql raises an error if nan is
         # sent to a non numeric column.
-        if np.any(pd.isnull(df)):
-            df[pd.isnull(df)] = None
+        df = df.where(pd.notnull(df), None)
+        # if np.any(pd.isnull(df)):
+        #     df[pd.isnull(df)] = None
         # values = [tuple(x) for x in df_ext.values]
 
         # Split dataframe in the entries related to existing references
@@ -387,9 +419,16 @@ class DM_SQL(baseDM.BaseDM):
         values_update = [tuple(x) for x in df_ext_old.values]
         values_insert = [tuple(x) for x in df_ext_new.values]
 
-        self.__setField(tablename, df.columns.tolist(), values_update)
-        self.__insertInTable(tablename, df_ext_new.columns.tolist(),
-                             values_insert)
+        print("---- ---- ---- Updating {}".format(tablename))
+        t0 = time.clock()
+        self._setField(tablename, df.columns.tolist(), values_update)
+        print(time.clock() - t0)
+        print("---- ---- ---- Inserting {}".format(tablename))
+        t0 = time.clock()
+        self._insertInTable(tablename, df_ext_new.columns.tolist(),
+                            values_insert)
+        print(time.clock() - t0)
+
         return
 
     def loadData(self):
@@ -422,15 +461,15 @@ class DM_SQL(baseDM.BaseDM):
         # Connect to the database
         try:
             if self.connector == 'mysql':
-                self.__conn = MySQLdb.connect(
+                self._conn = MySQLdb.connect(
                     self.server, self.user, self.password, self.db_name)
-                self.__c = self.__conn.cursor()
+                self._c = self._conn.cursor()
             elif self.connector == 'sqlalchemy':
                 engine_name = ('mysql://' + self.user + ':' + self.password +
                                '@' + self.server + '/' + self.db_name)
                 print('---- Creating engine {}'.format(engine_name))
                 engine = create_engine(engine_name)
-                self.__conn = engine.connect()
+                self._conn = engine.connect()
             else:
                 # sqlite3
                 # sqlite file will be in the root of the project, we read the
@@ -438,30 +477,29 @@ class DM_SQL(baseDM.BaseDM):
                 db_path = os.path.join(self.directory,
                                        self.dataset_fname + '.db')
                 print("---- Connecting to {}".format(db_path))
-                self.__conn = sqlite3.connect(db_path)
-                self.__c = self.__conn.cursor()
+                self._conn = sqlite3.connect(db_path)
+                self._c = self._conn.cursor()
             self.dbON = True
         except:
             print("---- Error connecting to the database")
 
         try:
-
             # #####################
             # Create missing tables
 
             # Create all tables that do not exist in the database yet.
-            tablenames = self.__getTableNames()
+            tablenames = self._getTableNames()
             alltables = [self.preds_tablename, self.label_values_tablename,
                          self.label_info_tablename, self.history_tablename]
             missing_tables = [t for t in alltables if t not in tablenames]
 
-            self.__createDBtable(missing_tables)
+            self._createDBtable(missing_tables)
 
             # ################
             # Load predictions
             sqlQuery = 'SELECT * FROM ' + self.preds_tablename
             df_preds = pd.read_sql(
-                sqlQuery, con=self.__conn, index_col=self.ref_name)
+                sqlQuery, con=self._conn, index_col=self.ref_name)
 
             # ###########
             # Load labels
@@ -469,7 +507,7 @@ class DM_SQL(baseDM.BaseDM):
             # Load label metadata
             sqlQuery = 'SELECT * FROM ' + self.label_info_tablename
             df_labelinfo = pd.read_sql(
-                sqlQuery, con=self.__conn, index_col=self.ref_name)
+                sqlQuery, con=self._conn, index_col=self.ref_name)
             # Rename column 'datestr' to 'date':
             df_labelinfo.rename(columns={'datestr': 'date'}, inplace=True)
             # Convert column names into tuples
@@ -479,7 +517,7 @@ class DM_SQL(baseDM.BaseDM):
             # Load label values
             sqlQuery = 'SELECT * FROM ' + self.label_values_tablename
             df_labelvalues = pd.read_sql(
-                sqlQuery, con=self.__conn, index_col=self.ref_name)
+                sqlQuery, con=self._conn, index_col=self.ref_name)
             # Convert column names into tuples
             df_labelvalues.columns = (
                 [('label', c) for c in df_labelvalues.columns])
@@ -496,7 +534,7 @@ class DM_SQL(baseDM.BaseDM):
             # Load label history
             sqlQuery = 'SELECT * FROM ' + self.history_tablename
             # Read dataframe. Note that I do not take any reference columns
-            labelhistory = pd.read_sql(sqlQuery, con=self.__conn)
+            labelhistory = pd.read_sql(sqlQuery, con=self._conn)
             # Rename columns datestr to date
             # (this is required because 'date' is a reserved word in sql)
             labelhistory.rename(
@@ -527,99 +565,58 @@ class DM_SQL(baseDM.BaseDM):
 
         return
 
-    def saveData(self, df_labels, df_preds, labelrecord, dest='file'):
+    def saveData(self, df_labels, df_preds, labelrecord, save_preds=True):
 
         """ Save label and prediction dataframes and labelhistory pickle files.
-            If dest='mongodb', they are also saved in a mongo database.
-
-            If dest='mongodb', the dataframes are store in the mode specified
-            in self.db_info['mode'].
-                'rewrite' :The existing db collection is removed and data are
-                           saved in a new one
-                'update'  :The data are upserted to the existing db.
 
             :Args:
                 :df_labels:   Pandas dataframe of labels
                 :df_preds:    Pandas dataframe of predictions
                 :labelrecord: Dataframe with the labelling events of this
                               session
-                :dest: Type of destination: 'file' (data is saved in files) or
-                 'mongodb'
-        """
+                :save_preds:  If False, predictions are not saved.
+s        """
 
         # Connect to the database
         try:
 
-            if self.connector == 'mysql':
-                # self.__conn = MySQLdb.connect(
-                #     self.server, self.user, self.password, self.db_name)
-                # self.__c = self.__conn.cursor()
-                engine_name = ('mysql://' + self.user + ':' + self.password +
-                               '@' + self.server + '/' + self.db_name)
-                ipdb.set_trace()
-                print('---- Creating engine {}'.format(engine_name))
-                engine = create_engine(engine_name)
-                self.__conn = engine.connect()
-            else:
-                # sqlite3
-                # sqlite file will be in the root of the project, we read the
-                # name from the config file and establish the connection
-                db_path = os.path.join(self.directory,
-                                       self.dataset_fname + '.db')
-                print("---- Connecting to {}".format(db_path))
-                self.__conn = sqlite3.connect(db_path)
-                self.__c = self.__conn.cursor()
-            self.dbON = True
+            if self._conn is None:
+                if self.connector == 'mysql':
+                    self._conn = MySQLdb.connect(
+                        self.server, self.user, self.password, self.db_name)
+                    self._c = self._conn.cursor()
+                elif self.connector == 'sqlalchemy':
+                    engine_name = (
+                        'mysql://' + self.user + ':' + self.password + '@' +
+                        self.server + '/' + self.db_name)
+                    print('---- Creating engine {}'.format(engine_name))
+                    engine = create_engine(engine_name)
+                    self._conn = engine.connect()
+                else:
+                    # sqlite3
+                    # sqlite file will be in the root of the project, we read
+                    # the name from the config file and establish connection
+                    db_path = os.path.join(self.directory,
+                                           self.dataset_fname + '.db')
+                    print("---- Connecting to {}".format(db_path))
+                    self._conn = sqlite3.connect(db_path)
+                    self._c = self._conn.cursor()
+                self.dbON = True
         except:
             print("---- Error connecting to the database")
 
-        import ipdb
-        ipdb.set_trace()
         # Save labels
-        self.__upsert(self.label_info_tablename,
-                      df_labels['info'].rename(columns={'date': 'datestr'}))
-        self.__upsert(self.label_values_tablename, df_labels['label'])
+        self._upsert(self.label_info_tablename,
+                     df_labels['info'].rename(columns={'date': 'datestr'}))
+        self._upsert(self.label_values_tablename, df_labels['label'])
         # Save label history
-        self.__upsert(self.history_tablename,
-                      labelrecord.rename(columns={'date': 'datestr'}))
+        self._upsert(self.history_tablename,
+                     labelrecord.rename(columns={'date': 'datestr'}))
         #                                            'wid': self.ref_name}))
-        # Save predictions.
-        # WARNING: the Predictions dataframe changes only when predictions
-        # have been imported. Thus, it should be not saved systematically.
-        self.__upsert(self.preds_tablename, df_preds)
 
-        # # Save predictions.
-        # # Let's see if replace works, and later we can test append.
-        # # Note that column 'date' is rename 'columns 'datestr'
-        # # (this is required because 'date' is a reserved word in sql)
-        # df_preds.to_sql(
-        #     self.preds_tablename, self.__conn, if_exists='replace',
-        #     index=True, index_label=self.ref_name)
+        # Save predictions (unles otherwise stated)
+        if save_preds:
+            self._upsert(self.preds_tablename, df_preds)
 
-        # # Save labels
-
-        # # Drop tables
-        # # Let's see if to_sql works. If so, dropping tables is not necessary.
-        # # self.__c.execute("DROP TABLE " + self.label_values_tablename)
-        # # self.__createDBtable(self.label_values_tablename)
-        # # self.__c.execute("DROP TABLE " + self.label_info_tablename)
-        # # self.__c.execute("DROP TABLE " + self.label_history_tablename)
-
-        # # let see if replace works, and later we can test append.
-        # # Note that column 'date' is rename 'columns 'datestr'
-        # # (this is required because 'date' is a reserved word in sql)
-        # df_labels['info'].rename(columns={'date': 'datestr'}).to_sql(
-        #     self.label_info_tablename, self.__conn, if_exists='replace',
-        #     index=True, index_label=self.ref_name)
-
-        # df_labels['label'].to_sql(
-        #     self.label_values_tablename, self.__conn, if_exists='replace',
-        #     index=True, index_label=self.ref_name)
-        # # Note that column 'date' is rename 'columns 'datestr'
-        # # (this is required because 'date' is a reserved word in sql)
-        # labelhistory.rename(
-        #     columns={'date': 'datestr', 'wid': self.ref_name}).to_sql(
-        #     self.history_tablename, self.__conn, if_exists='replace',
-        #     index=False, index_label=None)
-
-        self.__conn.commit()
+        if self.connector != 'sqlalchemy':
+            self._conn.commit()

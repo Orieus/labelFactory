@@ -144,7 +144,7 @@ class DM_Files(baseDM.BaseDM):
 
         return df_labels, df_preds, labelhistory
 
-    def saveData(self, df_labels, df_preds, labelhistory):
+    def saveData(self, df_labels, df_preds, labelhistory, save_preds=True):
 
         """ Save label and prediction dataframes and labelhistory pickle files.
             If dest='mongodb', they are also saved in a mongo database.
@@ -160,7 +160,8 @@ class DM_Files(baseDM.BaseDM):
                 :df_preds:  Pandas dataframe of predictions
                 :labelhistory:
                 :dest: Type of destination: 'file' (data is saved in files) or
-                 'mongodb'
+                       'mongodb'
+                :save_preds:  If False, predictions are not saved.
         """
 
         # Keep a copy of the original datasets, just in case some

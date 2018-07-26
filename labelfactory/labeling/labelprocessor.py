@@ -131,6 +131,8 @@ class LabelProcessor(object):
                 df_labels['info', 'userId'] = None
             if ('info', 'date') not in df_labels.columns:
                 df_labels['info', 'date'] = None
+            if ('info', 'labelstr') not in df_labels.columns:
+                df_labels['info', 'labelstr'] = None
 
         return df_labels
 
@@ -356,11 +358,15 @@ class LabelProcessor(object):
                     df_labels.loc[w, ('info', 'userId')] = df2_labels.loc[w, (
                         'info', 'userId')]
 
-                # Transfer the identity of the human labelers
+                # Transfer the labelling date
                 if 'date' in df2_labels.loc[w]['info']:
                     df_labels.loc[w, ('info', 'date')] = df2_labels.loc[w, (
                         'info', 'date')]
 
+                # Transfer the identity of the human labelers
+                if 'labelstr' in df2_labels.loc[w]['labelstr']:
+                    df_labels.loc[w, ('info', 'labelstr')] = df2_labels.loc[
+                        w, ('info', 'labelstr')]
             else:
 
                 # All wids in df2_labels that are not in df_labels are added to
@@ -393,8 +399,6 @@ class LabelProcessor(object):
             :Returns:
                 :df_labels:
         """
-
-        ipdb.set_trace()
 
         for wid in newlabels:
 
@@ -459,6 +463,8 @@ class LabelProcessor(object):
                     'relabel']
                 df_labels.loc[wid, ('info', 'date')] = newlabels[wid]['date']
                 df_labels.loc[wid, ('info', 'userId')] = new_userId
+                df_labels.loc[wid, ('info', 'labelstr')] = '++'.join(
+                    newlabels[wid]['label'])
 
         return df_labels
 
@@ -547,6 +553,7 @@ class LabelProcessor(object):
                 data[wid]['relabel'] = newlabels[wid]['relabel']
                 data[wid]['date'] = newlabels[wid]['date']
                 data[wid]['userId'] = new_userId
+                data[wid]['labelstr'] = '++'.join(newlabels[wid]['label'])
 
     def transferNewWeights2(self, newweights, df_labels):
 
