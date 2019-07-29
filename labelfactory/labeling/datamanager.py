@@ -22,6 +22,18 @@ import ipdb
 # Services from the project
 # sys.path.append(os.getcwd())
 
+# #############################################################################
+# #############################################################################
+# #############################################################################
+#
+# WARNING:
+#     THIS CLASS IS DEPRECATED. IT HAS BEEN REPLACED BY baseDM.py AND
+#     THEIR INHERITED CLASSES. HOWEVER, SOME OLD SCRIPT ARE STILL USING THIS
+#     CLASS. SO IT IS PRESERVED.
+# 
+# #############################################################################
+# #############################################################################
+# #############################################################################
 
 class DataManager(object):
 
@@ -314,6 +326,8 @@ class DataManager(object):
             if os.path.isfile(self.datapreds_file):
                 # Load prediction dataframes stored in pickle files
                 df_preds = pd.read_pickle(self.datapreds_file)
+
+        ipdb.set_trace()
 
         return df_labels, df_preds, labelhistory
 
@@ -790,6 +804,7 @@ class DataManager(object):
             # This replacement does not affect the url if it is a domain site.
             # But it may transform the url of specific web pages.
             wid = wid.replace("/", "__")
+
         elif mode == 'www':
 
             if url[0:4] == 'www.':

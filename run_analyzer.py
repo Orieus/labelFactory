@@ -23,7 +23,9 @@ import ipdb
 # Local imports
 from labelfactory.ConfigCfg import ConfigCfg as Cfg
 from labelfactory.Log import Log
-from labelfactory.labeling.datamanager import DataManager
+from labelfactory.labeling.dmFiles import DM_Files
+from labelfactory.labeling.dmSQL import DM_SQL
+# from labelfactory.labeling.datamanager import DataManager
 import labelfactory.dataanalyzer.ROCanalyzer as ROCanalyzer
 
 CF_FNAME = "config.cf"
@@ -31,14 +33,6 @@ CF_DEFAULT_PATH = "./config.cf.default"
 
 
 def main():
-
-    # To complete the migration to python 3, I should replace all "raw_input"
-    # by "input". Transitorily, to preserve compatibility with python 2, I
-    # simply rename inut to raw_input
-    if sys.version_info.major == 3:
-        raw_input2 = input
-    else:
-        raw_input2 = raw_input
 
     #########################
     # Configurable parameters
@@ -53,8 +47,8 @@ def main():
     if len(sys.argv) > 1:
         project_path = sys.argv[1]
     else:
-        project_path = raw_input2("Select the (absolute or relative) path " +
-                                  "to he labeling project folder: ")
+        project_path = input("Select the (absolute or relative) path to the " +
+                             "labeling project folder: ")
     if not project_path.endswith('/'):
         project_path = project_path + '/'
 
@@ -186,9 +180,14 @@ def main():
     #####################
 
     # Data manager object
-    data_mgr = DataManager(source_type, dest_type, file_info, db_info,
-                           categories, parentcat, ref_class, alphabet,
-                           compute_wid, unknown_pred)
+    if source_type == 'file' or source_type == 'mongodb':
+        data_mgr = DM_Files(source_type, dest_type, file_info, db_info,
+                            categories, parentcat, ref_class, alphabet,
+                            compute_wid, unknown_pred)
+    elif source_type == 'sql':
+        data_mgr = DM_SQL(source_type, dest_type, file_info, db_info,
+                          categories, parentcat, ref_class, alphabet,
+                          compute_wid, unknown_pred)
 
     ###################
     # Read all datasets
@@ -197,7 +196,7 @@ def main():
     log.info('Carga de datos')
 
     # Load data from the standard dataset.
-    df_labels, df_preds, labelhistory = data_mgr.loadData(source_type)
+    df_labels, df_preds, labelhistory = data_mgr.loadData()
 
     if len(df_preds) == 0 and len(df_labels) == 0:
         log.error(u"El repositorio de datos está vacío")
@@ -215,7 +214,7 @@ def main():
     # Subset of categories with some preds
     cat_subset = []
     for c in categories:
-        preds_c = df_preds[c].as_matrix()
+        preds_c = df_preds[c].values
 
         # I use pd.notnull to take both None's and nan's into account
         # if np.any(np.not_equal(preds_c, None)):
@@ -223,9 +222,9 @@ def main():
             cat_subset.append(c)
 
     # Label info arrays
-    w_tr = df_labels['info', 'weight'].as_matrix()
-    rs0al1 = df_labels['info', 'marker'].as_matrix()
-    relabels = df_labels['info', 'relabel'].as_matrix()
+    w_tr = df_labels['info', 'weight'].values
+    rs0al1 = df_labels['info', 'marker'].values
+    relabels = df_labels['info', 'relabel'].values
 
     # ###################
     # Analyze predictions
@@ -237,20 +236,23 @@ def main():
     # Select categories with nontrivial predictions only
     preds = {}
     for c in cat_subset:
-        preds_c = df_preds[c].as_matrix()
+        preds_c = df_preds[c].values
         # preds[c] = preds_c[np.not_equal(preds_c, None)]
-        preds[c] = preds_c[pd.notnull(preds_c)]
+        preds[c] = preds_c[pd.notnull(preds_c)].tolist()
 
     # Plot predict distributions for the selected categories
     nc = len(preds)
     f, ax = plt.subplots(nc, sharex=True, sharey=True)
+    if nc == 1:
+        ax = [ax]
+
     for i, c in enumerate(preds):
         # The small bias is to avoid an error if all values are equal
         r = (np.min(preds[c]) - 1e-20, np.max(preds[c]) + 1e-20)
 
         # Plot histogram
         ax[i].hist(preds[c], bins=n_bins, range=r, label='All predict values',
-                   normed=True)
+                   density=True)
         ax[i].set_ylabel(c)
 
     # Remove spaces between plots and set equal x and y axes.
@@ -260,17 +262,23 @@ def main():
     # Remove xtick for all but bottom plot.
     plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
     plt.show(block=False)
+    fig_dir = os.path.join(project_path, 'figures')
+    if not os.path.isdir(fig_dir):
+        os.makedirs(fig_dir)
+    plt.savefig(os.path.join(fig_dir, 'hist_preds.png'))
 
     # ####################################################
     # Labeled vs unlabeled predict distribution histograms
 
     nc = len(cat_subset)
     f, ax = plt.subplots(1, nc, sharex=True, sharey=True)
+    if nc == 1:
+        ax = [ax]
     for i, c in enumerate(cat_subset):
 
-        p_all = df_preds[c].as_matrix()
+        p_all = df_preds[c].values
         # p_all = p_all[np.not_equal(p_all, None)]
-        p_all = p_all[pd.notnull(p_all)]
+        p_all = p_all[pd.notnull(p_all)].tolist()
 
         p_ptr = np.array([df_preds.loc[w][c] for w in wids_ptr])
         p_ptr = p_ptr[pd.notnull(p_ptr)]
@@ -280,9 +288,9 @@ def main():
         r_ptr = (np.min(p_ptr) - 1e-20, np.max(p_ptr) + 1e-20)
 
         ax[i].hist(p_all, bins=n_bins, range=r_all,
-                   label='All predict', alpha=0.5, normed=True, linewidth=0)
+                   label='All predict', alpha=0.5, density=True, linewidth=0)
         ax[i].hist(p_ptr, bins=n_bins, range=r_ptr, label='Labeled data',
-                   alpha=0.5, normed=True, linewidth=0, color='g')
+                   alpha=0.5, density=True, linewidth=0, color='g')
         ax[i].set_title(c)
 
     ax[nc - 1].legend(loc='upper right')
@@ -292,6 +300,7 @@ def main():
     # Remove xtick for all but bottom plot.
     plt.setp([a.get_yticklabels() for a in f.axes[1:]], visible=False)
     plt.show(block=False)
+    plt.savefig(os.path.join(fig_dir, 'hist_preds_lu.png'))
 
     # ##############
     # Label analysis
@@ -325,30 +334,30 @@ def main():
     # Print label counts
     print("No. of labels per main category:")
     for c in main_cats:
-        print("    - " + c + ": {0}".format(sumAll[c]))
+        print(f"    - {c}: {sumAll[c]}")
 
     # Print label counts
     print("No. of labels in subcategories:")
     for c in sub_cats:
-        print("    - " + c + ": {0}".format(sumAll[c]))
+        print(f"    - {c}: {sumAll[c]}")
 
     # Print label proportions
     print("Label proportions per main category:")
     print(" -- Random Sampling:")
     for c in main_cats:
-        print("    - " + c + ": {0}".format(propRS[c]))
+        print(f"    - {c}: {propRS[c]}")
     print(" -- Active Learning:")
     for c in main_cats:
-        print("    - " + c + ": {0}".format(propW[c]))
+        print(f"    - {c}: {propW[c]}")
 
     # Print label proportions
     print("Label proportions per subcategories:")
     print(" -- Random Sampling:")
     for c in sub_cats:
-        print("    - " + c + ": {0}".format(propRS[c]))
+        print(f"    - {c}: {propRS[c]}")
     print(" -- Active Learning:")
     for c in sub_cats:
-        print("    - " + c + ": {0}".format(propW[c]))
+        print(f"    - {c}: {propW[c]}")
 
     # ############
     # ROC analysis
@@ -362,8 +371,9 @@ def main():
 
         # ##################
         # Compute thresholds
+        fpath = os.path.join(fig_dir, f'ROC_{c}.png')
         umbral_tpfn, umbral_tpfn_rs, umbral_tpfn_w = ROCanalyzer.plotROCs(
-            p_ptr, y_ptr, w_ptr, rs0al1, relabels, c)
+            p_ptr, y_ptr, w_ptr, rs0al1, relabels, c, fpath=fpath)
 
     # ###################
     # Plot sorted weights
@@ -376,6 +386,7 @@ def main():
     plt.ylabel('Weight value')
     # plt.ylim([0, 60000000000])
     plt.show(block=False)
+    plt.savefig(os.path.join(fig_dir, 'hist_weights.png'))
 
     ipdb.set_trace()
 

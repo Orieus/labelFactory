@@ -142,6 +142,22 @@ class DM_Files(baseDM.BaseDM):
             df_preds = pd.DataFrame(index=[], columns=cols)
             print(df_preds)
 
+        # df_preds = df_preds[pd.notnull(df_preds['b2c_on'])]
+
+        # df_labels.rename(
+        #     index={x: self.computeWID(x) for x in df_labels.index},
+        #     inplace=True)
+        # df_preds.rename(
+        #     index={x: self.computeWID(x) for x in df_preds.index},
+        #     inplace=True)
+        # labelhistory = {self.computeWID(x): labelhistory[x]
+        #                 for x in labelhistory}
+
+        # df_labels.replace({'O++t++h++e++r': 'Other'}, inplace=True)
+        # df_labels.replace({'b++2++c++_++o++n': 'b2c_on'}, inplace=True)
+        # df_labels.replace({'b++2++c++_++r++e++a++d++y': 'b2c_ready'},
+        #                   inplace=True)
+
         return df_labels, df_preds, labelhistory
 
     def saveData(self, df_labels, df_preds, labelhistory, save_preds=True):

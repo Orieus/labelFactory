@@ -29,12 +29,12 @@ def main():
                         help='Label the specified url address only')
     parser.add_argument('--tm', type=str, default='expand',
                         help='Mode to transfer the new data: expand ' +
-                        '(default), project or contract')
+                        '(default) | project | contract')
     parser.add_argument('--user', type=str, default=None,
                         help='Use the specified name to identify the labeler')
     parser.add_argument('--export_labels', type=str, default=None,
-                        help='Export labels. Options: all|rs|al (all labels ' +
-                        ' | only random sampling | only active learning')
+                        help='Export labels. Options: all|rs|al (all labels' +
+                        ' | only random sampling | only active learning)')
 
     parser.add_argument('--num_urls', type=int, default=10,
                         help='Number of examples to be labeled during a ' +

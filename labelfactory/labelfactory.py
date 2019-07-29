@@ -31,6 +31,8 @@ if sys.version_info.major == 3:
 else:
     import Tkinter as tk
 
+import ipdb
+
 # The following is to capture a user tag automatically.
 try:
     import pwd
@@ -75,14 +77,6 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
                     labeling windows
     """
 
-    # To complete the migration to python 3, I should replace all "raw_input"
-    # by "input". Transitorily, to preserve compatibility with python 2, I
-    # simply rename inut to raw_input
-    if sys.version_info.major == 3:
-        raw_input2 = input
-    else:
-        raw_input2 = raw_input
-
     #######
     # Start
     #######
@@ -93,22 +87,17 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
             tm_options))
 
     # # Check if project folder exists. Otherwise create a default one.
-    # if len(sys.argv) > 1:
-    #     project_path = sys.argv[1]
-    # else:
-    #     project_path = raw_input2("Select the (absolute or relative) path " +
-    #                               "to the labeling project folder: ")
     if project_path is None:
-        project_path = raw_input2("Select the (absolute or relative) path " +
-                                  "to the labeling project folder: ")
+        project_path = input("Select the (absolute or relative) path to " +
+                             "the labeling project folder: ")
 
     if not project_path.endswith('/'):
         project_path = project_path + '/'
 
     # Check if project folder exists. This is necessary to follow
     if not os.path.isdir(project_path):
-        createfolder = raw_input2("Folder " + project_path +
-                                  "does not exist. Create? (y/n)")
+        createfolder = input(f"Folder {project_path} does not exist. " + 
+                             "Create? (y/n)")
 
         if createfolder == "y":
             os.makedirs(project_path)    # Create folder
@@ -154,8 +143,7 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
                         'DataPaths', 'db_label_info_tablename'),
                    'history_tablename': cf.get(
                         'DataPaths', 'db_history_tablename'),
-                   'ref_name': cf.get(
-                        'DataPaths', 'db_ref_name'),
+                   'ref_name': cf.get('DataPaths', 'db_ref_name'),
                    'mode': cf.get('DataPaths', 'db_mode')}
     elif source_type == 'mongodb' or dest_type == 'mongodb':
         db_info = {'name': cf.get('DataPaths', 'db_name'),
@@ -287,14 +275,13 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
                     user0 = getpass.getuser()  # For Windows
 
                 # Ask for a labeler name.
-                userId = raw_input2(
-                    "Please write you user name [{0}]: ".format(user0))
+                userId = input(f"Please write you user name [{user0}]: ")
                 if userId == "":
                     userId = user0
-                    print("Your User Name is {0}".format(userId))
+                    print(f"Your User Name is {userId}")
             else:
                 userId = user
-                print("Your User Name is {0}".format(userId))
+                print(f"Your User Name is {userId}")
         else:
             userId = None
             if user is not None:
@@ -309,7 +296,7 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
     # Verify that parentclass names are in the category set
     for c in parentcat:
         if c not in categories:
-            log.error("Unknown category {} ".format(c) + "in the parentcat " +
+            log.error(f"Unknown category {c} in the parentcat " +
                       "dictionary. Revise the configuration file")
             sys.exit()
         elif parentcat[c] not in categories:

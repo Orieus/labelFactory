@@ -85,7 +85,7 @@ def compute_tpfn(p, NFP, NFN):
     return th, pos
 
 
-def plotROCs(p, y, w, rs0al1, relabels, category=None):
+def plotROCs(p, y, w, rs0al1, relabels, category=None, fpath=None):
 
     """ Plot three possible decision thresholds for a classifier with
         predictions p for samples with labels y, depending on the use of
@@ -146,9 +146,14 @@ def plotROCs(p, y, w, rs0al1, relabels, category=None):
     plt.plot(FPR[pos], TPR[pos], 'r.', markersize=10)
     plt.plot(FPRrs[pos_rs], TPRrs[pos_rs], 'g.', markersize=10)
     plt.plot(FPRw[pos_w], TPRw[pos_w], 'b.', markersize=10)
+    plt.axis('square')
+    plt.xlim((0, 1))
+    plt.ylim((0, 1))
     plt.show(block=False)
+    if fpath is not None:
+        plt.savefig(fpath)
 
-    # ROC based on sklearn (the results are assentially the same)
+    # ROC based on sklearn (the results are essentially the same)
     # from sklearn.metrics import roc_curve
     # FPR2, TPR2, tt = roc_curve(y_sorted, p_sorted)
     # FPRrs2, TPRrs2, tt = roc_curve(y_sorted2, p_sorted2)

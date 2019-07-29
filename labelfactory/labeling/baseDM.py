@@ -565,7 +565,7 @@ class BaseDM(object):
             # Load predictions from file, if it exists
             if os.path.isfile(preds_file):
                 print("---- Importing predictions from category " + category)
-                with open(preds_file, 'r') as f:
+                with open(preds_file, 'rb') as f:
                     preds = pickle.load(f)
 
                 # Move the preditions file to the "used" folder.
@@ -653,6 +653,7 @@ class BaseDM(object):
             # This replacement does not affect the url if it is a domain site.
             # But it may transform the url of specific web pages.
             wid = wid.replace("/", "__")
+
         elif mode == 'www':
 
             if url[0:4] == 'www.':

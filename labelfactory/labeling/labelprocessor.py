@@ -463,8 +463,14 @@ class LabelProcessor(object):
                     'relabel']
                 df_labels.loc[wid, ('info', 'date')] = newlabels[wid]['date']
                 df_labels.loc[wid, ('info', 'userId')] = new_userId
-                df_labels.loc[wid, ('info', 'labelstr')] = '++'.join(
-                    newlabels[wid]['label'])
+                if self.cat_model == 'single':
+                    df_labels.loc[
+                        wid, ('info', 'labelstr')] = newlabels[wid]['label']
+                elif self.cat_model == 'multi':
+                    df_labels.loc[wid, ('info', 'labelstr')] = '++'.join(
+                        newlabels[wid]['label'])
+                else:
+                    exit("---- ERROR: Unknown category model")
 
         return df_labels
 
@@ -553,7 +559,13 @@ class LabelProcessor(object):
                 data[wid]['relabel'] = newlabels[wid]['relabel']
                 data[wid]['date'] = newlabels[wid]['date']
                 data[wid]['userId'] = new_userId
-                data[wid]['labelstr'] = '++'.join(newlabels[wid]['label'])
+
+                if self.cat_model == 'single':
+                    data[wid]['labelstr'] = newlabels[wid]['label']
+                elif self.cat_model == 'multi':
+                    data[wid]['labelstr'] = '++'.join(newlabels[wid]['label'])
+                else:
+                    exit("---- ERROR: Unknown category model")
 
     def transferNewWeights2(self, newweights, df_labels):
 
@@ -629,7 +641,13 @@ class LabelProcessor(object):
             # Reformat date
             nl[wid]['date'] = nl[wid]['date'].strftime("%Y%m%d%H%M%S%f")
             # Transform list of labels into string
-            nl[wid]['label'] = '++'.join(nl[wid]['label'])
+            if self.cat_model == 'single':
+                nl[wid]['label'] = nl[wid]['label']
+            elif self.cat_model == 'multi':
+                nl[wid]['label'] = '++'.join(nl[wid]['label'])
+            else:
+                exit("---- ERROR: Unknown category model")
+
             # Add user info
             nl[wid]['userId'] = new_userId
 
