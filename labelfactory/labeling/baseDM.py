@@ -14,7 +14,6 @@ import numpy as np
 # import copy
 from datetime import datetime
 
-import ipdb
 
 # Services from the project
 # sys.path.append(os.getcwd())

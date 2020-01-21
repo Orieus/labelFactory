@@ -15,7 +15,7 @@ import pandas as pd
 from datetime import datetime
 
 # Local imports
-from labelfactory.labeling import baseDM
+from . import baseDM
 
 # Services from the project
 # sys.path.append(os.getcwd())

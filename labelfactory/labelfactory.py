@@ -18,13 +18,13 @@ import os
 import shutil
 
 # Local imports
-from labelfactory.labeling.LabelGUIController import LabelGUIController
-from labelfactory.labeling.urlsampler import URLsampler
-from labelfactory.ConfigCfg import ConfigCfg as Cfg
-from labelfactory.Log import Log
-from labelfactory.labeling.dmFiles import DM_Files
-from labelfactory.labeling.dmSQL import DM_SQL
-from labelfactory.labeling.labelprocessor import LabelProcessor
+from .labeling.LabelGUIController import LabelGUIController
+from .labeling.urlsampler import URLsampler
+from .ConfigCfg import ConfigCfg as Cfg
+from .Log import Log
+from .labeling.dmFiles import DM_Files
+from .labeling.dmSQL import DM_SQL
+from .labeling.labelprocessor import LabelProcessor
 
 if sys.version_info.major == 3:
     import tkinter as tk

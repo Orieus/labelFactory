@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-import ipdb
 import sys
 
 # My own libraries
-from labelfactory.activelearning.activelearner import ActiveLearner
+from ..activelearning.activelearner import ActiveLearner
 
 
 class URLsampler(object):
@@ -16,7 +15,6 @@ class URLsampler(object):
 
     def __init__(self, ref_class, preds, labels, urls, markers, weights,
                  alphabet, type_al, alth, p_al, p_relabel, tourneysize):
-
         """
         This method initialize the sampler object. As part of this process, it
         creates the AL objects required for the sample generation.
@@ -68,8 +66,8 @@ class URLsampler(object):
                                     tourneysize)
 
     def get_urls_batch(self, max_urls=10,):
-
-        """ Loads at most max_urls from the dataset.
+        """
+        Loads at most max_urls from the dataset.
 
         :Attributes:
 
@@ -197,8 +195,8 @@ class URLsampler(object):
         return newurls, newwids, newqueries
 
     def get_single_url(self, target_wid):
-
-        """ Loads a single url from from the dataset.
+        """
+        Loads a single url from from the dataset.
 
         :Attributes:
             :target_wid: the wid of a single url to label.
@@ -231,8 +229,8 @@ class URLsampler(object):
         return newurls, newwids, newqueries
 
     def get_urls_RSAL(self, max_urls=10):
-
-        """ Loads at most max_urls from the dataset.
+        """
+        Loads at most max_urls from the dataset.
 
             This is an old version of get_urls. The main difference between
             them is that, while get_urls_batch creates a unique AL object for
@@ -308,8 +306,8 @@ class URLsampler(object):
         # Feed scores and labels to the active learners to get some new queries
         # Number of queries to take by al (active learning) and by rs (random
         # sampling)
-        n_queries_al = max_urls*self.p_al     # No. of queries by al
-        n_queries_rs = max_urls-n_queries_al  # No. of queries by rs
+        n_queries_al = max_urls * self.p_al     # No. of queries by al
+        n_queries_rs = max_urls - n_queries_al  # No. of queries by rs
 
         ##################
         # Active learning:
