@@ -11,11 +11,10 @@ import MySQLdb
 import sqlite3
 from sqlalchemy import create_engine
 
-import ipdb
 import numpy as np
 
 # Local imports
-from labelfactory.labeling import baseDM
+from . import baseDM
 
 import time
 
