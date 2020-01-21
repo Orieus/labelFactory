@@ -14,8 +14,6 @@ import pandas as pd
 # import copy
 from datetime import datetime
 
-import ipdb
-
 # Local imports
 from labelfactory.labeling import baseDM
 
@@ -57,25 +55,25 @@ class DM_Files(baseDM.BaseDM):
     """
 
     def loadData(self):
+        """
+        Load data and label history from file.
+        This is the basic method to read the information about labels, urls and
+        predictions from files in the standard format.
 
-        """ Load data and label history from file.
-            This is the basic method to read the information about labels, urls
-            and predictions from files in the standard format.
+        If the dataset file or the labelhistory file does not exist, no error
+        is returned, though empty data variables are returned.
 
-            If the dataset file or the labelhistory file does not exist, no
-            error is returned, though empty data variables are returned.
-
-            :Returns:
-                :df_labels:  Multi-index Pandas dataframe containing labels.
-                             Fields are:
-                    'info':  With columns marker', 'relabel', 'weight',
-                             'userId', 'date'
-                    'label': One column per categorie, containing the labels
-                :df_preds: Pandas dataframa indexed by the complete list of
-                           wids, with one column of urls and one addicional
-                           column per category containing predictions.
-                :labelhistory: Dictionary containing, for each wid, a record of
-                        the labeling events up to date.
+        :Returns:
+            :df_labels:  Multi-index Pandas dataframe containing labels.
+                         Fields are:
+                'info':  With columns marker', 'relabel', 'weight',
+                         'userId', 'date'
+                'label': One column per categorie, containing the labels
+            :df_preds: Pandas dataframa indexed by the complete list of
+                       wids, with one column of urls and one addicional
+                       column per category containing predictions.
+            :labelhistory: Dictionary containing, for each wid, a record of
+                    the labeling events up to date.
         """
 
         # Read label history
@@ -126,10 +124,10 @@ class DM_Files(baseDM.BaseDM):
             df_labels, df_preds = self.get_df(data, labelhistory)
         else:
             # Warning: the next 4 commands are duplicated in importData.
-            # Make sure taht any changes here are also done there
+            # Make sure that any changes here are also done there
             # (I know, this is not a good programming style..)
             info = ['marker', 'relabel', 'weight', 'userId', 'date']
-            arrays = [len(info)*['info'] + len(self.categories)*['label'],
+            arrays = [len(info) * ['info'] + len(self.categories) * ['label'],
                       info + self.categories]
             tuples = list(zip(*arrays))
             mindex = pd.MultiIndex.from_tuples(tuples)
@@ -161,23 +159,23 @@ class DM_Files(baseDM.BaseDM):
         return df_labels, df_preds, labelhistory
 
     def saveData(self, df_labels, df_preds, labelhistory, save_preds=True):
+        """
+        Save label and prediction dataframes and labelhistory pickle files.
+        If dest='mongodb', they are also saved in a mongo database.
 
-        """ Save label and prediction dataframes and labelhistory pickle files.
-            If dest='mongodb', they are also saved in a mongo database.
+        If dest='mongodb', the dataframes are store in the mode specified
+        in self.db_info['mode'].
+            'rewrite' :The existing db collection is removed and data are
+                       saved in a new one
+            'update'  :The data are upserted to the existing db.
 
-            If dest='mongodb', the dataframes are store in the mode specified
-            in self.db_info['mode'].
-                'rewrite' :The existing db collection is removed and data are
-                           saved in a new one
-                'update'  :The data are upserted to the existing db.
-
-            :Args:
-                :df_labels: Pandas dataframe of labels
-                :df_preds:  Pandas dataframe of predictions
-                :labelhistory:
-                :dest: Type of destination: 'file' (data is saved in files) or
-                       'mongodb'
-                :save_preds:  If False, predictions are not saved.
+        :Args:
+            :df_labels: Pandas dataframe of labels
+            :df_preds:  Pandas dataframe of predictions
+            :labelhistory:
+            :dest: Type of destination: 'file' (data is saved in files) or
+                   'mongodb'
+            :save_preds:  If False, predictions are not saved.
         """
 
         # Keep a copy of the original datasets, just in case some

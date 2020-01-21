@@ -31,8 +31,6 @@ if sys.version_info.major == 3:
 else:
     import Tkinter as tk
 
-import ipdb
-
 # The following is to capture a user tag automatically.
 try:
     import pwd
@@ -96,7 +94,7 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
 
     # Check if project folder exists. This is necessary to follow
     if not os.path.isdir(project_path):
-        createfolder = input(f"Folder {project_path} does not exist. " + 
+        createfolder = input(f"Folder {project_path} does not exist. " +
                              "Create? (y/n)")
 
         if createfolder == "y":
@@ -130,32 +128,30 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
 
     # Mongo DB settings
     if source_type == 'sql':
-        db_info = {'name': cf.get('DataPaths', 'db_name'),
-                   'user': cf.get('DataPaths', 'db_user'),
-                   'server': cf.get('DataPaths', 'db_server'),
-                   'password': cf.get('DataPaths', 'db_password'),
-                   'connector': cf.get('DataPaths', 'db_connector'),
-                   'preds_tablename': cf.get(
-                        'DataPaths', 'db_preds_tablename'),
-                   'label_values_tablename': cf.get(
-                        'DataPaths', 'db_label_values_tablename'),
-                   'label_info_tablename': cf.get(
-                        'DataPaths', 'db_label_info_tablename'),
-                   'history_tablename': cf.get(
-                        'DataPaths', 'db_history_tablename'),
-                   'ref_name': cf.get('DataPaths', 'db_ref_name'),
-                   'mode': cf.get('DataPaths', 'db_mode')}
+        db_info = {
+            'name': cf.get('DataPaths', 'db_name'),
+            'user': cf.get('DataPaths', 'db_user'),
+            'server': cf.get('DataPaths', 'db_server'),
+            'password': cf.get('DataPaths', 'db_password'),
+            'connector': cf.get('DataPaths', 'db_connector'),
+            'preds_tablename': cf.get('DataPaths', 'db_preds_tablename'),
+            'label_values_tablename': cf.get('DataPaths',
+                                             'db_label_values_tablename'),
+            'label_info_tablename': cf.get('DataPaths',
+                                           'db_label_info_tablename'),
+            'history_tablename': cf.get('DataPaths', 'db_history_tablename'),
+            'ref_name': cf.get('DataPaths', 'db_ref_name'),
+            'mode': cf.get('DataPaths', 'db_mode')}
     elif source_type == 'mongodb' or dest_type == 'mongodb':
-        db_info = {'name': cf.get('DataPaths', 'db_name'),
-                   'hostname': cf.get('DataPaths', 'db_hostname'),
-                   'user': cf.get('DataPaths', 'db_user'),
-                   'pwd': cf.get('DataPaths', 'db_pwd'),
-                   'label_coll_name': cf.get(
-                        'DataPaths', 'db_label_coll_name'),
-                   'history_coll_name': cf.get(
-                        'DataPaths', 'db_history_coll_name'),
-                   'port': cf.get('DataPaths', 'db_port'),
-                   'mode': cf.get('DataPaths', 'db_mode')}
+        db_info = {
+            'name': cf.get('DataPaths', 'db_name'),
+            'hostname': cf.get('DataPaths', 'db_hostname'),
+            'user': cf.get('DataPaths', 'db_user'),
+            'pwd': cf.get('DataPaths', 'db_pwd'),
+            'label_coll_name': cf.get('DataPaths', 'db_label_coll_name'),
+            'history_coll_name': cf.get('DataPaths', 'db_history_coll_name'),
+            'port': cf.get('DataPaths', 'db_port'),
+            'mode': cf.get('DataPaths', 'db_mode')}
     else:
         db_info = None
 
@@ -352,6 +348,7 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
 
     # Load data from the standard datasets.
     df_labels, df_preds, labelhistory = data_mgr.loadData()
+    breakpoint()
 
     # Load new labels and predictions from the input folder
     log.info("-- Loading new data from the input folder")

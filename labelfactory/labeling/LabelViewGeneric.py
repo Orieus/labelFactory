@@ -179,21 +179,21 @@ class LabelViewGeneric(tk.Frame):
                 subcats[rc] = [c for c, p in self.parent_cat.items()
                                if p == rc]
 
-            # maxumum number of columns:
+            # maximum number of columns:
             n_cols = max([len(s) for p, s in subcats.items()])
 
             # Create the main label
             self.main_label = tk.Label(
                 self, text=" Select the correct labels ")
             self.main_label.grid(
-                row=0, column=0, columnspan=n_cols, sticky=tk.E+tk.W)
+                row=0, column=0, columnspan=n_cols+1, sticky=tk.E+tk.W)
 
             # Create the url label but without the text yet.
             r = 1
             if self.cat_model == 'single':
                 self.url_label = tk.Label(self)
                 self.url_label.grid(
-                    row=r, column=0, columnspan=n_cols, sticky=tk.E+tk.W)
+                    row=r, column=0, columnspan=n_cols+1, sticky=tk.E+tk.W)
                 r += 1
 
             # Create the collection of buttons
@@ -233,6 +233,11 @@ class LabelViewGeneric(tk.Frame):
                 self.url_label = tk.Text(
                     self, height=30, width=120, wrap=tk.WORD, relief=tk.SUNKEN,
                     bg='white')
-                self.url_label.grid(
-                    row=r+1, column=0, rowspan=40, columnspan=120)
+
+                # Create the box for text inputs
+                if self.datatype == 'txt':
+                    self.url_label.grid(
+                        row=r+1, column=0, rowspan=40, columnspan=120)
+
+
  
