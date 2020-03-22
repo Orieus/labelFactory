@@ -192,6 +192,9 @@ class URLsampler(object):
         print([newwids[k] for k in range(n) if relabels[k] == 1 and
                markers[k] == 1])
 
+        print(f"Predictions for the reference class, {self.ref_class}:")
+        print({w: self.preds[self.ref_class][w] for w in newwids})
+
         return newurls, newwids, newqueries
 
     def get_single_url(self, target_wid):
@@ -212,6 +215,7 @@ class URLsampler(object):
         # Make sure that the target url has been previously labeled.
         # The code is not ready to label urls without a previous label,
         # because that would requiere to change the active learning weights
+
         if target_wid not in self.markers:
             sys.exit("The target url has no label. Labeling of a specific " +
                      "url should be done to revise existing labels only")
@@ -225,6 +229,8 @@ class URLsampler(object):
 
         # Print the four types of webs to label
         print("Relabeling {0} ".format(newurls[0]))
+        print(f"Predictions for the reference class, {self.ref_class}:")
+        print({w: self.preds[self.ref_class][w] for w in newqueries})
 
         return newurls, newwids, newqueries
 

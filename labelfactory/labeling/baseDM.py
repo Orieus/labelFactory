@@ -65,7 +65,6 @@ class BaseDM(object):
     def __init__(self, source_type, dest_type, file_info, db_info,
                  categories, parentcat, ref_class, alphabet,
                  compute_wid='yes', unknown_pred=0):
-
         """
         Stores files, folder and path names into the data struture of the
         DataManager object.
@@ -290,17 +289,17 @@ class BaseDM(object):
         return data
 
     def importData(self):
+        """
+        Read data from the input folder.
+        Only labels with positive or negative label are loaded
 
-        """ Read data from the input folder.
-            Only labels with positive or negative label are loaded
+        :Args:
+            :-: None. File locations and the set of categories are taken
+                      from the class attributes
 
-            :Args:
-                :-: None. File locations and the set of categories are taken
-                          from the class attributes
-
-            :Returns:
-                :df_labels: Pandas dataframe of labels
-                :df_preds: Pandas dataframe of predictions
+        :Returns:
+            :df_labels: Pandas dataframe of labels
+            :df_preds: Pandas dataframe of predictions
         """
 
         # Warning.
@@ -373,8 +372,11 @@ class BaseDM(object):
                            'category {2}       \r').format(nk, ntot, cat),
                           end="")
 
-                urls_dict[wid] = preds[cat][wid]['url']
-                pred_dict[wid] = preds[cat][wid]['pred']
+                if preds[cat][wid] is not None:
+                    urls_dict[wid] = preds[cat][wid]['url']
+                    pred_dict[wid] = preds[cat][wid]['pred']
+                else:
+                    print(f"{wid}")
 
             df2_preds['url'].update(pd.Series(urls_dict))
             df2_preds[cat].update(pd.Series(pred_dict))
@@ -434,7 +436,7 @@ class BaseDM(object):
         # Make sure taht any changes here are also done there
         # (I know, this is not a good programming style..)
         info = ['marker', 'relabel', 'weight', 'userId', 'date']
-        arrays = [len(info)*['info'] + len(self.categories)*['label'],
+        arrays = [len(info) * ['info'] + len(self.categories) * ['label'],
                   info + self.categories]
         tuples = list(zip(*arrays))
         mindex = pd.MultiIndex.from_tuples(tuples)
@@ -508,21 +510,20 @@ class BaseDM(object):
         return labels
 
     def importPredicts(self, category=None):
+        """
+        Get dictionary of predictions relative to a given category
 
-        """ Get dictionary of predictions relative to a given category
+        :Args:
+            :category: The category to load (from a pkl file)
+                       If None, all categories are read from a unique csv file
 
-            :Args:
-                :category: The category to load (from a pkl file)
-                           If None, all categories are read from a unique
-                           csv file
-
-            :Returns:
-                :preds: Dictionary of predictions
-                        - If category is not None, preds[wid] has the
-                          prediction for url wid about the given category.
-                        - If category is not None, preds is a dataframe
-                          with the wid as uid column and one column with
-                          predictions for each category.
+        :Returns:
+            :preds: Dictionary of predictions
+                    - If category is not None, preds[wid] has the prediction
+                      for url wid about the given category.
+                    - If category is not None, preds is a dataframe with the
+                      wid as uid column and one column with predictions for
+                      each category.
         """
 
         # The default category is the reference class used by the

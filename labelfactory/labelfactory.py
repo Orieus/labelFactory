@@ -348,7 +348,6 @@ def run_labeler(project_path, url, transfer_mode, user, export_labels,
 
     # Load data from the standard datasets.
     df_labels, df_preds, labelhistory = data_mgr.loadData()
-    breakpoint()
 
     # Load new labels and predictions from the input folder
     log.info("-- Loading new data from the input folder")

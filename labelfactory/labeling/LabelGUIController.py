@@ -14,8 +14,6 @@ if sys.version_info.major == 3:
 else:
     import Tkinter as tk
 
-import ipdb
-
 
 class LabelGUIController(object):
 
@@ -30,9 +28,9 @@ class LabelGUIController(object):
     def __init__(self, newurls, newwids, newqueries, preds, labels, urls,
                  categories, alphabet, datatype='url', cat_model='single',
                  parent_cat={}, text2label=None):
-
-        """ This method initialize the sampler object. As part of this process
-        it creates the AL objects required for the sample generation.
+        """
+        This method initialize the sampler object. As part of this process it
+        creates the AL objects required for the sample generation.
 
         :Attributes:
             :newurls:    A list of urls to label
@@ -71,15 +69,14 @@ class LabelGUIController(object):
         self.text2label = text2label
 
     def takeandshow_sample(self):
+        """
+        Gets next sample id from the list and visualize the sample.
+        The type of visualization depends of the type of sample:
+            if sample id is a url, a browser is opened.
+            if sample id is not a url, data is printed.
 
-        """ Gets next sample id from the list and visualize the sample.
-            The type of visualization depends of the type of sample:
-                if sample id is a url, a browser is opened.
-                if sample id is not a url, data is printed.
-
-            Note that the sample identifiers are stored in variable self.url
-            for historical reasons. This variable does not necessarily stores
-            urls.
+        Note that the sample identifiers are stored in variable self.url for
+        historical reasons. This variable does not necessarily stores urls.
         """
 
         self.url = None
